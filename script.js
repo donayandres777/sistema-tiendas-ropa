@@ -3,26 +3,23 @@ const formulario = document.querySelector("form");
 formulario.addEventListener("submit", function(evento) {
   evento.preventDefault();
 
-  const campos = formulario.querySelectorAll("input");
-  const talla = formulario.querySelector("select");
+  const nombre = formulario.querySelector('input[type="text"]').value;
+  const whatsapp = formulario.querySelector('input[type="tel"]').value;
+  const producto = formulario.querySelectorAll('input[type="text"]')[1].value;
+  const talla = formulario.querySelector("select").value;
 
   const cliente = {
-    nombre: campos[0].value,
-    whatsapp: campos[1].value,
-    producto: campos[2].value,
-    talla: talla.value,
-    fecha: new Date().toLocaleString()
+    nombre: nombre,
+    whatsapp: whatsapp,
+    producto: producto,
+    talla: talla
   };
 
-  const clientesGuardados =
-    JSON.parse(localStorage.getItem("clientes")) || [];
+  let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
 
-  clientesGuardados.push(cliente);
+  clientes.push(cliente);
 
-  localStorage.setItem(
-    "clientes",
-    JSON.stringify(clientesGuardados)
-  );
+  localStorage.setItem("clientes", JSON.stringify(clientes));
 
   alert("Cliente registrado correctamente");
 
