@@ -1,4 +1,33 @@
 const formulario = document.querySelector("form");
+const lista = document.getElementById("lista-clientes");
+
+let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
+
+function mostrarClientes() {
+    lista.innerHTML = "";
+
+    if (clientes.length === 0) {
+        lista.innerHTML = "<p>No hay clientes registrados todavía.</p>";
+        return;
+    }
+
+    clientes.forEach(function(cliente, indice) {
+        const div = document.createElement("div");
+
+        div.innerHTML = `
+            <p>
+                <strong>Cliente ${indice + 1}</strong><br>
+                Nombre: ${cliente.nombre}<br>
+                WhatsApp: ${cliente.whatsapp}<br>
+                Producto: ${cliente.producto}<br>
+                Talla: ${cliente.talla}
+            </p>
+            <hr>
+        `;
+
+        lista.appendChild(div);
+    });
+}
 
 formulario.addEventListener("submit", function(evento) {
     evento.preventDefault();
@@ -14,41 +43,15 @@ formulario.addEventListener("submit", function(evento) {
         talla: talla
     };
 
-    let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
-
     clientes.push(cliente);
 
     localStorage.setItem("clientes", JSON.stringify(clientes));
 
-    alert("Cliente registrado correctamente");
-
     formulario.reset();
 
     mostrarClientes();
+
+    alert("Cliente registrado correctamente");
 });
-
-function mostrarClientes() {
-    const lista = document.getElementById("lista-clientes");
-
-    let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
-
-    lista.innerHTML = "";
-
-    clientes.forEach(function(cliente) {
-        const div = document.createElement("div");
-
-        div.innerHTML = `
-            <p>
-                <strong>Nombre:</strong> ${cliente.nombre}<br>
-                <strong>WhatsApp:</strong> ${cliente.whatsapp}<br>
-                <strong>Producto:</strong> ${cliente.producto}<br>
-                <strong>Talla:</strong> ${cliente.talla}
-            </p>
-            <hr>
-        `;
-
-        lista.appendChild(div);
-    });
-}
 
 mostrarClientes();
