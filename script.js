@@ -29,15 +29,15 @@ div.className = "cliente";
                     <strong>Talla:</strong> ${cliente.talla}
                 </p>
 
-                <button onclick="abrirWhatsApp(${indice})">
+                <button class="boton-whatsapp" onclick="abrirWhatsApp(${indice})">
                     WhatsApp
                 </button>
 
-                <button onclick="editarCliente(${indice})">
+                <button class="boton-editar" onclick="editarCliente(${indice})">
                     Editar
                 </button>
 
-                <button onclick="eliminarCliente(${indice})">
+                <button class="boton-eliminar" onclick="eliminarCliente(${indice})">
                     Eliminar
                 </button>
 
