@@ -3,6 +3,10 @@ const lista = document.getElementById("lista-clientes");
 
 let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
 
+function guardarClientes() {
+    localStorage.setItem("clientes", JSON.stringify(clientes));
+}
+
 function mostrarClientes() {
     lista.innerHTML = "";
 
@@ -15,14 +19,30 @@ function mostrarClientes() {
         const div = document.createElement("div");
 
         div.innerHTML = `
-            <p>
-                <strong>Cliente ${indice + 1}</strong><br>
-                Nombre: ${cliente.nombre}<br>
-                WhatsApp: ${cliente.whatsapp}<br>
-                Producto: ${cliente.producto}<br>
-                Talla: ${cliente.talla}
-            </p>
-            <hr>
+            <div>
+                <h3>Cliente ${indice + 1}</h3>
+
+                <p>
+                    <strong>Nombre:</strong> ${cliente.nombre}<br>
+                    <strong>WhatsApp:</strong> ${cliente.whatsapp}<br>
+                    <strong>Producto:</strong> ${cliente.producto}<br>
+                    <strong>Talla:</strong> ${cliente.talla}
+                </p>
+
+                <button onclick="abrirWhatsApp(${indice})">
+                    WhatsApp
+                </button>
+
+                <button onclick="editarCliente(${indice})">
+                    Editar
+                </button>
+
+                <button onclick="eliminarCliente(${indice})">
+                    Eliminar
+                </button>
+
+                <hr>
+            </div>
         `;
 
         lista.appendChild(div);
@@ -45,7 +65,7 @@ formulario.addEventListener("submit", function(evento) {
 
     clientes.push(cliente);
 
-    localStorage.setItem("clientes", JSON.stringify(clientes));
+    guardarClientes();
 
     formulario.reset();
 
@@ -53,5 +73,71 @@ formulario.addEventListener("submit", function(evento) {
 
     alert("Cliente registrado correctamente");
 });
+
+function eliminarCliente(indice) {
+    const confirmar = confirm("¿Quieres eliminar este cliente?");
+
+    if (!confirmar) {
+        return;
+    }
+
+    clientes.splice(indice, 1);
+
+    guardarClientes();
+
+    mostrarClientes();
+}
+
+function editarCliente(indice) {
+    const cliente = clientes[indice];
+
+    const nuevoNombre = prompt("Nombre del cliente:", cliente.nombre);
+
+    if (nuevoNombre === null) {
+        return;
+    }
+
+    const nuevoWhatsapp = prompt("WhatsApp:", cliente.whatsapp);
+
+    if (nuevoWhatsapp === null) {
+        return;
+    }
+
+    const nuevoProducto = prompt("Producto:", cliente.producto);
+
+    if (nuevoProducto === null) {
+        return;
+    }
+
+    const nuevaTalla = prompt(
+        "Talla (S, M, L o XL):",
+        cliente.talla
+    );
+
+    if (nuevaTalla === null) {
+        return;
+    }
+
+    cliente.nombre = nuevoNombre;
+    cliente.whatsapp = nuevoWhatsapp;
+    cliente.producto = nuevoProducto;
+    cliente.talla = nuevaTalla;
+
+    guardarClientes();
+
+    mostrarClientes();
+}
+
+function abrirWhatsApp(indice) {
+    const cliente = clientes[indice];
+
+    let numero = cliente.whatsapp.replace(/\D/g, "");
+
+    if (numero.length === 10 && numero.startsWith("3")) {
+        numero = "57" + numero;
+    }
+
+    window.open("https://wa.me/" + numero, "_blank");
+}
 
 mostrarClientes();
