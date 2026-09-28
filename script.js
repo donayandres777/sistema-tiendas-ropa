@@ -17,7 +17,7 @@ function mostrarClientes() {
 
     clientes.forEach(function(cliente, indice) {
         const div = document.createElement("div");
-
+div.className = "cliente";
         div.innerHTML = `
             <div>
                 <h3>Cliente ${indice + 1}</h3>
