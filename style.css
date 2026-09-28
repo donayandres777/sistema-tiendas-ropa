@@ -1,0 +1,136 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    margin: 0;
+    padding: 20px;
+    color: #222;
+}
+
+.contenedor {
+    max-width: 700px;
+    margin: auto;
+}
+
+h1 {
+    text-align: center;
+    color: #222;
+    margin-bottom: 10px;
+}
+
+.descripcion {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+form {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    margin-bottom: 30px;
+}
+
+label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input,
+select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+form button {
+    width: 100%;
+    margin-top: 20px;
+    padding: 13px;
+    border: none;
+    border-radius: 8px;
+    background: #222;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+form button:hover {
+    background: #444;
+}
+
+h2 {
+    margin-top: 30px;
+}
+
+.cliente {
+    background: white;
+    padding: 18px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.cliente h3 {
+    margin-top: 0;
+}
+
+.cliente p {
+    line-height: 1.6;
+}
+
+.boton-whatsapp {
+    background: #25D366;
+    color: white;
+}
+
+.boton-editar {
+    background: #2878ff;
+    color: white;
+}
+
+.boton-eliminar {
+    background: #e53935;
+    color: white;
+}
+
+.cliente button {
+    border: none;
+    padding: 10px 14px;
+    margin: 5px 5px 0 0;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.contador {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.buscador {
+    margin-bottom: 20px;
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 12px;
+    }
+
+    h1 {
+        font-size: 30px;
+    }
+
+    .cliente button {
+        width: 100%;
+        margin-right: 0;
+    }
+}
