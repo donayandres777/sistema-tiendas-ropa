@@ -24,4 +24,30 @@ formulario.addEventListener("submit", function(evento) {
   alert("Cliente registrado correctamente");
 
   formulario.reset();
+  mostrarClientes();
 });
+function mostrarClientes() {
+    const lista = document.getElementById("lista-clientes");
+
+    let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
+
+    lista.innerHTML = "";
+
+    clientes.forEach((cliente) => {
+        const div = document.createElement("div");
+
+        div.innerHTML = `
+            <p>
+                <strong>Nombre:</strong> ${cliente.nombre}<br>
+                <strong>WhatsApp:</strong> ${cliente.whatsapp}<br>
+                <strong>Producto:</strong> ${cliente.producto}<br>
+                <strong>Talla:</strong> ${cliente.talla}
+            </p>
+            <hr>
+        `;
+
+        lista.appendChild(div);
+    });
+}
+
+mostrarClientes();
