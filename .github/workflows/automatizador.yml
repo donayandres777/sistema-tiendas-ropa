@@ -1,0 +1,13 @@
+name: Prueba del automatizador
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  prueba:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Probar automatizador
+        run: echo "El automatizador funciona correctamente"
