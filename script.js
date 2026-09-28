@@ -1,31 +1,32 @@
 const formulario = document.querySelector("form");
 
 formulario.addEventListener("submit", function(evento) {
-  evento.preventDefault();
+    evento.preventDefault();
 
-  const nombre = formulario.querySelector('input[type="text"]').value;
-  const whatsapp = formulario.querySelector('input[type="tel"]').value;
-  const producto = formulario.querySelectorAll('input[type="text"]')[1].value;
-  const talla = formulario.querySelector("select").value;
+    const textos = formulario.querySelectorAll('input[type="text"]');
+    const whatsapp = formulario.querySelector('input[type="tel"]').value;
+    const talla = formulario.querySelector("select").value;
 
-  const cliente = {
-    nombre: nombre,
-    whatsapp: whatsapp,
-    producto: producto,
-    talla: talla
-  };
+    const cliente = {
+        nombre: textos[0].value,
+        whatsapp: whatsapp,
+        producto: textos[1].value,
+        talla: talla
+    };
 
-  let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
+    let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
 
-  clientes.push(cliente);
+    clientes.push(cliente);
 
-  localStorage.setItem("clientes", JSON.stringify(clientes));
+    localStorage.setItem("clientes", JSON.stringify(clientes));
 
-  alert("Cliente registrado correctamente");
+    alert("Cliente registrado correctamente");
 
-  formulario.reset();
-  mostrarClientes();
+    formulario.reset();
+
+    mostrarClientes();
 });
+
 function mostrarClientes() {
     const lista = document.getElementById("lista-clientes");
 
@@ -33,7 +34,7 @@ function mostrarClientes() {
 
     lista.innerHTML = "";
 
-    clientes.forEach((cliente) => {
+    clientes.forEach(function(cliente) {
         const div = document.createElement("div");
 
         div.innerHTML = `
