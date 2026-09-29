@@ -50,6 +50,45 @@ div.className = "cliente";
         lista.appendChild(div);
     });
 }
+buscador.addEventListener("input", function() {
+
+    const texto = buscador.value.toLowerCase();
+
+    const filtrados = clientes.filter(function(cliente) {
+
+        return (
+            cliente.nombre.toLowerCase().includes(texto) ||
+            cliente.whatsapp.includes(texto) ||
+            cliente.producto.toLowerCase().includes(texto)
+        );
+
+    });
+
+    lista.innerHTML = "";
+
+    filtrados.forEach(function(cliente, indice) {
+
+        const div = document.createElement("div");
+
+        div.className = "cliente";
+
+        div.innerHTML = `
+            <div>
+                <h3>${cliente.nombre}</h3>
+
+                <p>
+                    <strong>WhatsApp:</strong> ${cliente.whatsapp}<br>
+                    <strong>Producto:</strong> ${cliente.producto}<br>
+                    <strong>Talla:</strong> ${cliente.talla}
+                </p>
+            </div>
+        `;
+
+        lista.appendChild(div);
+
+    });
+
+});
 
 formulario.addEventListener("submit", function(evento) {
     evento.preventDefault();
