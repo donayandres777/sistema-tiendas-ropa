@@ -30,6 +30,12 @@ div.className = "cliente";
                     <strong>WhatsApp:</strong> ${cliente.whatsapp}<br>
                     <strong>Producto:</strong> ${cliente.producto}<br>
                     <strong>Talla:</strong> ${cliente.talla}
+                     <br>
+<strong>Fecha:</strong> ${cliente.fechaRegistro}<br>
+<strong>Hora:</strong> ${cliente.horaRegistro}
+                      
+                    <br>
+                
                 </p>
 
                 <button class="boton-whatsapp" onclick="abrirWhatsApp(${indice})">
@@ -98,12 +104,16 @@ formulario.addEventListener("submit", function(evento) {
     const whatsapp = formulario.querySelector('input[type="tel"]').value;
     const talla = formulario.querySelector("select").value;
 
-    const cliente = {
-        nombre: textos[0].value,
-        whatsapp: whatsapp,
-        producto: textos[1].value,
-        talla: talla
-    };
+const ahora = new Date();
+
+const cliente = {
+    nombre: textos[0].value,
+    whatsapp: whatsapp,
+    producto: textos[1].value,
+    talla: talla,
+    fechaRegistro: ahora.toLocaleDateString("es-CO"),
+    horaRegistro: ahora.toLocaleTimeString("es-CO")
+};
 
     clientes.push(cliente);
 
