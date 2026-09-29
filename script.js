@@ -1,5 +1,7 @@
 const formulario = document.querySelector("form");
 const lista = document.getElementById("lista-clientes");
+const contador = document.getElementById("contador-clientes");
+const buscador = document.getElementById("buscador");
 
 let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
 
