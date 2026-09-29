@@ -1,55 +1,907 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Seguimiento de Clientes</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>DONAY STORE | Gestión de Clientes</title>
+
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 
 <body>
 
-  <h1>Seguimiento de Clientes</h1>
+<div class="app">
 
-  <p>
-    Registra los clientes interesados en tus productos
-    para no perder oportunidades de venta.
-  </p>
+    <!-- =========================
+         ENCABEZADO
+    ========================== -->
 
-  <form>
-    <label>Nombre del cliente</label><br>
-    <input type="text" placeholder="Ej: Laura"><br><br>
+    <header class="header">
 
-    <label>WhatsApp</label><br>
-    <input type="tel" placeholder="Ej: 3001234567"><br><br>
+        <div class="logo-area">
 
-    <label>Producto</label><br>
-    <input type="text" placeholder="Ej: Vestido negro"><br><br>
+            <div class="logo-icon">
+                👕
+            </div>
 
-    <label>Talla</label><br>
-    <select>
-      <option>S</option>
-      <option>M</option>
-      <option>L</option>
-      <option>XL</option>
-    </select><br><br>
+            <div>
+                <h1>DONAY STORE</h1>
+                <p>Gestión de tu tienda de ropa</p>
+            </div>
 
-    <button type="submit">
-      Registrar cliente
-    </button>
-  </form>
-  <h2>Clientes registrados</h2>
-<div id="contador-clientes" class="contador"></div>
+        </div>
 
-<input
-    type="text"
-    id="buscador"
-    class="buscador"
-    placeholder="Buscar por nombre, WhatsApp o producto"
->
+        <div class="header-badge">
+            🛍️ Mi tienda
+        </div>
 
-<div id="lista-clientes"></div>
-  
-<script src="script.js?v=2"></script>
+    </header>
+
+
+    <!-- =========================
+         NAVEGACIÓN
+    ========================== -->
+
+    <nav class="navegacion">
+
+        <button
+            class="nav-btn activo"
+            onclick="mostrarSeccion('inicio', this)">
+            🏠 Inicio
+        </button>
+
+        <button
+            class="nav-btn"
+            onclick="mostrarSeccion('clientes', this)">
+            👥 Clientes
+        </button>
+
+        <button
+            class="nav-btn"
+            onclick="mostrarSeccion('ventas', this)">
+            💰 Ventas
+        </button>
+
+        <button
+            class="nav-btn"
+            onclick="mostrarSeccion('inventario', this)">
+            📦 Inventario
+        </button>
+
+    </nav>
+
+
+    <!-- =========================
+         INICIO
+    ========================== -->
+
+    <main id="seccion-inicio" class="seccion activa">
+
+        <div class="hero">
+
+            <div>
+
+                <span class="hero-etiqueta">
+                    TU TIENDA EN UN SOLO LUGAR
+                </span>
+
+                <h2>
+                    Administra tus clientes,
+                    ventas e inventario.
+                </h2>
+
+                <p>
+                    Lleva el control de tus productos,
+                    clientes y ganancias de manera sencilla.
+                </p>
+
+                <button
+                    class="btn-principal"
+                    onclick="mostrarSeccionPorNombre('clientes')">
+
+                    ➕ Registrar cliente
+
+                </button>
+
+            </div>
+
+            <div class="hero-icon">
+                👟
+            </div>
+
+        </div>
+
+
+        <!-- ESTADÍSTICAS -->
+
+        <div class="estadisticas">
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+                    👥
+                </div>
+
+                <div>
+                    <span>Clientes</span>
+                    <strong id="inicio-clientes">0</strong>
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+                    💰
+                </div>
+
+                <div>
+                    <span>Ventas</span>
+                    <strong id="inicio-ventas">0</strong>
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+                    📦
+                </div>
+
+                <div>
+                    <span>Productos</span>
+                    <strong id="inicio-productos">0</strong>
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+                    💵
+                </div>
+
+                <div>
+                    <span>Ganancia</span>
+                    <strong id="inicio-ganancia">$0</strong>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- MARCAS -->
+
+        <section class="bloque">
+
+            <div class="titulo-bloque">
+
+                <div>
+                    <span>ESTILO</span>
+                    <h3>Marcas populares</h3>
+                </div>
+
+            </div>
+
+
+            <div class="marcas">
+
+                <button onclick="seleccionarMarca('Nike')">
+                    NIKE
+                </button>
+
+                <button onclick="seleccionarMarca('Adidas')">
+                    adidas
+                </button>
+
+                <button onclick="seleccionarMarca('Puma')">
+                    PUMA
+                </button>
+
+                <button onclick="seleccionarMarca('Jordan')">
+                    JORDAN
+                </button>
+
+                <button onclick="seleccionarMarca('New Balance')">
+                    NEW BALANCE
+                </button>
+
+                <button onclick="seleccionarMarca('Levi’s')">
+                    Levi's
+                </button>
+
+            </div>
+
+            <p class="nota">
+                Las marcas son categorías para organizar tus productos.
+            </p>
+
+        </section>
+
+
+        <!-- CATEGORÍAS -->
+
+        <section class="bloque">
+
+            <div class="titulo-bloque">
+
+                <div>
+                    <span>COLECCIÓN</span>
+                    <h3>Categorías</h3>
+                </div>
+
+            </div>
+
+
+            <div class="categorias">
+
+                <button
+                    class="categoria-card"
+                    onclick="seleccionarCategoria('Camisetas')">
+
+                    <div>👕</div>
+                    <strong>Camisetas</strong>
+
+                </button>
+
+
+                <button
+                    class="categoria-card"
+                    onclick="seleccionarCategoria('Pantalones')">
+
+                    <div>👖</div>
+                    <strong>Pantalones</strong>
+
+                </button>
+
+
+                <button
+                    class="categoria-card"
+                    onclick="seleccionarCategoria('Vestidos')">
+
+                    <div>👗</div>
+                    <strong>Vestidos</strong>
+
+                </button>
+
+
+                <button
+                    class="categoria-card"
+                    onclick="seleccionarCategoria('Zapatos')">
+
+                    <div>👟</div>
+                    <strong>Zapatos</strong>
+
+                </button>
+
+
+                <button
+                    class="categoria-card"
+                    onclick="seleccionarCategoria('Accesorios')">
+
+                    <div>👜</div>
+                    <strong>Accesorios</strong>
+
+                </button>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- =========================
+         CLIENTES
+    ========================== -->
+
+    <section
+        id="seccion-clientes"
+        class="seccion">
+
+        <div class="titulo-seccion">
+
+            <div>
+
+                <span>GESTIÓN</span>
+
+                <h2>
+                    Clientes
+                </h2>
+
+                <p>
+                    Registra y administra tus clientes.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- FORMULARIO -->
+
+        <form id="formulario-clientes">
+
+            <div class="form-titulo">
+
+                <div class="form-icon">
+                    👤
+                </div>
+
+                <div>
+                    <h3>Registrar nuevo cliente</h3>
+                    <p>Completa la información de la venta o interesado.</p>
+                </div>
+
+            </div>
+
+
+            <div class="form-grid">
+
+
+                <div class="campo">
+
+                    <label>
+                        Nombre del cliente
+                    </label>
+
+                    <input
+                        type="text"
+                        id="nombre"
+                        placeholder="Ej: Laura"
+                        required>
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        WhatsApp
+                    </label>
+
+                    <input
+                        type="tel"
+                        id="whatsapp"
+                        placeholder="Ej: 3001234567"
+                        required>
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        Producto
+                    </label>
+
+                    <input
+                        type="text"
+                        id="producto"
+                        placeholder="Ej: Vestido negro"
+                        required>
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        Marca
+                    </label>
+
+                    <select id="marca">
+
+                        <option value="Sin marca">
+                            Sin marca
+                        </option>
+
+                        <option value="Nike">
+                            Nike
+                        </option>
+
+                        <option value="Adidas">
+                            Adidas
+                        </option>
+
+                        <option value="Puma">
+                            Puma
+                        </option>
+
+                        <option value="Jordan">
+                            Jordan
+                        </option>
+
+                        <option value="New Balance">
+                            New Balance
+                        </option>
+
+                        <option value="Levi’s">
+                            Levi's
+                        </option>
+
+                        <option value="Otra">
+                            Otra
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        Categoría
+                    </label>
+
+                    <select id="categoria">
+
+                        <option value="Camisetas">
+                            Camisetas
+                        </option>
+
+                        <option value="Pantalones">
+                            Pantalones
+                        </option>
+
+                        <option value="Vestidos">
+                            Vestidos
+                        </option>
+
+                        <option value="Zapatos">
+                            Zapatos
+                        </option>
+
+                        <option value="Accesorios">
+                            Accesorios
+                        </option>
+
+                        <option value="Otro">
+                            Otro
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        Talla
+                    </label>
+
+                    <select id="talla">
+
+                        <option value="S">S</option>
+
+                        <option value="M">M</option>
+
+                        <option value="L">L</option>
+
+                        <option value="XL">XL</option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        Precio de venta
+                    </label>
+
+                    <input
+                        type="number"
+                        id="precio"
+                        placeholder="Ej: 80000"
+                        min="0">
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        Costo del producto
+                    </label>
+
+                    <input
+                        type="number"
+                        id="costo"
+                        placeholder="Ej: 50000"
+                        min="0">
+
+                </div>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="btn-principal btn-registrar">
+
+                ➕ Registrar cliente
+
+            </button>
+
+        </form>
+
+
+        <!-- LISTA -->
+
+        <div class="lista-header">
+
+            <div>
+
+                <h3>
+                    Clientes registrados
+                </h3>
+
+                <p>
+                    Consulta y administra tus clientes.
+                </p>
+
+            </div>
+
+            <button
+                class="btn-secundario"
+                onclick="exportarCSV()">
+
+                📊 Exportar
+
+            </button>
+
+        </div>
+
+
+        <div
+            id="contador-clientes"
+            class="contador">
+        </div>
+
+
+        <div class="filtros">
+
+            <input
+                type="text"
+                id="buscador"
+                class="buscador"
+                placeholder="🔎 Buscar cliente, WhatsApp, producto o marca">
+
+
+            <select
+                id="filtro-estado"
+                class="filtro-select">
+
+                <option value="Todos">
+                    Todos los estados
+                </option>
+
+                <option value="Pendiente">
+                    Pendientes
+                </option>
+
+                <option value="Vendido">
+                    Vendidos
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <div id="lista-clientes"></div>
+
+    </section>
+
+
+    <!-- =========================
+         VENTAS
+    ========================== -->
+
+    <section
+        id="seccion-ventas"
+        class="seccion">
+
+        <div class="titulo-seccion">
+
+            <span>NEGOCIO</span>
+
+            <h2>
+                Ventas
+            </h2>
+
+            <p>
+                Consulta las ventas realizadas y tus ganancias.
+            </p>
+
+        </div>
+
+
+        <div class="ventas-resumen">
+
+            <div class="venta-resumen-card">
+
+                <span>
+                    Ventas realizadas
+                </span>
+
+                <strong id="total-ventas">
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="venta-resumen-card">
+
+                <span>
+                    Dinero vendido
+                </span>
+
+                <strong id="dinero-ventas">
+                    $0
+                </strong>
+
+            </div>
+
+
+            <div class="venta-resumen-card">
+
+                <span>
+                    Ganancia
+                </span>
+
+                <strong id="ganancia-ventas">
+                    $0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div id="lista-ventas"></div>
+
+    </section>
+
+
+    <!-- =========================
+         INVENTARIO
+    ========================== -->
+
+    <section
+        id="seccion-inventario"
+        class="seccion">
+
+        <div class="titulo-seccion">
+
+            <span>PRODUCTOS</span>
+
+            <h2>
+                Inventario
+            </h2>
+
+            <p>
+                Controla las prendas y productos disponibles.
+            </p>
+
+        </div>
+
+
+        <div class="inventario-form">
+
+            <h3>
+                ➕ Agregar producto
+            </h3>
+
+
+            <div class="form-grid">
+
+                <div class="campo">
+
+                    <label>
+                        Producto
+                    </label>
+
+                    <input
+                        type="text"
+                        id="inventario-producto"
+                        placeholder="Ej: Camiseta básica">
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        Marca
+                    </label>
+
+                    <select id="inventario-marca">
+
+                        <option>
+                            Sin marca
+                        </option>
+
+                        <option>
+                            Nike
+                        </option>
+
+                        <option>
+                            Adidas
+                        </option>
+
+                        <option>
+                            Puma
+                        </option>
+
+                        <option>
+                            Jordan
+                        </option>
+
+                        <option>
+                            New Balance
+                        </option>
+
+                        <option>
+                            Levi’s
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        Talla
+                    </label>
+
+                    <select id="inventario-talla">
+
+                        <option>S</option>
+
+                        <option>M</option>
+
+                        <option>L</option>
+
+                        <option>XL</option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        Cantidad
+                    </label>
+
+                    <input
+                        type="number"
+                        id="inventario-cantidad"
+                        min="1"
+                        value="1">
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        Precio
+                    </label>
+
+                    <input
+                        type="number"
+                        id="inventario-precio"
+                        min="0"
+                        placeholder="Ej: 80000">
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label>
+                        Costo
+                    </label>
+
+                    <input
+                        type="number"
+                        id="inventario-costo"
+                        min="0"
+                        placeholder="Ej: 50000">
+
+                </div>
+
+            </div>
+
+
+            <button
+                type="button"
+                class="btn-principal"
+                onclick="agregarProductoInventario()">
+
+                📦 Agregar al inventario
+
+            </button>
+
+        </div>
+
+
+        <div
+            id="lista-inventario"
+            class="inventario-lista">
+        </div>
+
+    </section>
+
+
+    <!-- =========================
+         MODAL RECIBO
+    ========================== -->
+
+    <div
+        id="modal-recibo"
+        class="modal">
+
+        <div class="modal-contenido">
+
+            <button
+                class="cerrar-modal"
+                onclick="cerrarRecibo()">
+
+                ✕
+
+            </button>
+
+            <div id="contenido-recibo"></div>
+
+            <button
+                class="btn-principal"
+                onclick="imprimirRecibo()">
+
+                🖨️ Imprimir recibo
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         PIE
+    ========================== -->
+
+    <footer>
+
+        <p>
+            DONAY STORE © 2026
+        </p>
+
+        <span>
+            Sistema de gestión de tienda
+        </span>
+
+    </footer>
+
+</div>
+
+
+<script src="script.js?v=3"></script>
+
 </body>
 </html>
