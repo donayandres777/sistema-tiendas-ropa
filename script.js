@@ -11,6 +11,7 @@ function guardarClientes() {
 
 function mostrarClientes() {
     lista.innerHTML = "";
+    contador.textContent = clientes.length + " clientes registrados";
 
     if (clientes.length === 0) {
         lista.innerHTML = "<p>No hay clientes registrados todavía.</p>";
