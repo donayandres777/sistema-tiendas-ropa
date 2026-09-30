@@ -1,8 +1,39 @@
 /* =====================================================
    DONAY STORE
    SISTEMA DE CLIENTES, VENTAS E INVENTARIO
+   VERSION SUPABASE
 ===================================================== */
 
+/*
+   IMPORTANTE:
+   Esta es la Publishable Key de Supabase.
+   NO poner nunca una Secret Key aquí.
+*/
+const SUPABASE_URL = "https://nouwdqeznmaphvisrxyq.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_WhcUZvNR-Rn1ThN4qnF6Vg_4jZJ5qoN";
+
+let supabaseClient = null;
+let usuarioActual = null;
+let tiendaActual = null;
+let cargandoSistema = true;
+
+/* Carga Supabase JS desde CDN para este sitio HTML normal */
+function cargarLibreriaSupabase() {
+    return new Promise(function(resolve, reject) {
+        if (window.supabase) {
+            resolve();
+            return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+        script.onload = resolve;
+        script.onerror = function() {
+            reject(new Error("No se pudo cargar Supabase."));
+        };
+        document.head.appendChild(script);
+    });
+}
 
 /* =====================================================
    DATOS
@@ -14,93 +45,576 @@ const contador = document.getElementById("contador-clientes");
 const buscador = document.getElementById("buscador");
 const filtroEstado = document.getElementById("filtro-estado");
 
+let clientes = [];
+let inventario = [];
 
 /* =====================================================
-   CARGAR CLIENTES EXISTENTES
+   UTILIDADES SUPABASE
 ===================================================== */
 
-let clientes = JSON.parse(
-    localStorage.getItem("clientes")
-) || [];
+function mostrarErrorSupabase(error, mensaje) {
+    console.error(mensaje, error);
 
+    alert(
+        "❌ " + mensaje +
+        "\n\n" +
+        (error && error.message ? error.message : "Revisa tu conexión.")
+    );
+}
 
-/* =====================================================
-   COMPATIBILIDAD CON CLIENTES ANTIGUOS
-   NO BORRA LOS DATOS QUE YA TENÍAS
-===================================================== */
+function fechaTexto(fecha) {
+    if (!fecha) return "Sin fecha";
 
-clientes = clientes.map(function(cliente) {
+    const d = new Date(fecha);
 
+    if (Number.isNaN(d.getTime())) {
+        return String(fecha);
+    }
+
+    return d.toLocaleDateString("es-CO");
+}
+
+function horaTexto(fecha) {
+    if (!fecha) return "Sin hora";
+
+    const d = new Date(fecha);
+
+    if (Number.isNaN(d.getTime())) {
+        return "Sin hora";
+    }
+
+    return d.toLocaleTimeString("es-CO");
+}
+
+function convertirClienteDesdeDB(cliente) {
     return {
+        id: cliente.id,
 
         nombre: cliente.nombre || "",
-
         whatsapp: cliente.whatsapp || "",
-
         producto: cliente.producto || "",
-
         talla: cliente.talla || "S",
-
         marca: cliente.marca || "Sin marca",
-
         categoria: cliente.categoria || "Otro",
 
         fechaRegistro:
-            cliente.fechaRegistro || "Sin fecha",
+            cliente.fecha_registro
+                ? fechaTexto(cliente.fecha_registro)
+                : "Sin fecha",
 
         horaRegistro:
-            cliente.horaRegistro || "Sin hora",
+            cliente.fecha_registro
+                ? horaTexto(cliente.fecha_registro)
+                : "Sin hora",
 
         estado:
-            cliente.estado || "Pendiente",
+            cliente.estado === "vendido"
+                ? "Vendido"
+                : "Pendiente",
 
-        precio:
-            Number(cliente.precio) || 0,
+        precio: Number(cliente.precio) || 0,
+        costo: Number(cliente.costo) || 0,
 
-        costo:
-            Number(cliente.costo) || 0
-
+        fechaVenta: cliente.fecha_venta || null
     };
+}
 
-});
+function convertirInventarioDesdeDB(producto) {
+    return {
+        id: producto.id,
 
+        producto: producto.producto || "",
+        marca: producto.marca || "Sin marca",
+        talla: producto.talla || "S",
+        cantidad: Number(producto.cantidad) || 0,
+        precio: Number(producto.precio) || 0,
+        costo: Number(producto.costo) || 0
+    };
+}
 
 /* =====================================================
-   INVENTARIO
+   LOGIN
 ===================================================== */
 
-let inventario = JSON.parse(
-    localStorage.getItem("inventario")
-) || [];
+function mostrarLogin() {
+    let login = document.getElementById("login-supabase");
 
+    if (login) {
+        login.classList.add("activo");
+        return;
+    }
+
+    login = document.createElement("div");
+    login.id = "login-supabase";
+
+    login.innerHTML = `
+        <div class="login-caja">
+            <h1>🛍️ DONAY STORE</h1>
+            <p>Inicia sesión para entrar a tu tienda.</p>
+
+            <form id="form-login-supabase">
+                <input
+                    id="login-email"
+                    type="email"
+                    placeholder="Correo electrónico"
+                    autocomplete="email"
+                    required
+                >
+
+                <input
+                    id="login-password"
+                    type="password"
+                    placeholder="Contraseña"
+                    autocomplete="current-password"
+                    required
+                >
+
+                <button type="submit">
+                    🔐 Iniciar sesión
+                </button>
+            </form>
+
+            <p id="login-mensaje" class="login-mensaje"></p>
+        </div>
+    `;
+
+    document.body.appendChild(login);
+
+    const estilo = document.createElement("style");
+
+    estilo.textContent = `
+        #login-supabase {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: rgba(0,0,0,.96);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #login-supabase.oculto {
+            display: none;
+        }
+
+        .login-caja {
+            width: min(420px, 100%);
+            background: #fff;
+            color: #111;
+            border-radius: 18px;
+            padding: 28px;
+            box-sizing: border-box;
+            box-shadow: 0 20px 60px rgba(0,0,0,.35);
+        }
+
+        .login-caja h1 {
+            margin: 0 0 10px;
+            text-align: center;
+        }
+
+        .login-caja p {
+            text-align: center;
+            margin: 8px 0 20px;
+        }
+
+        #form-login-supabase input {
+            width: 100%;
+            box-sizing: border-box;
+            margin: 7px 0;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        #form-login-supabase button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 14px;
+            border: 0;
+            border-radius: 10px;
+            background: #111;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .login-mensaje {
+            min-height: 20px;
+            color: #c00;
+        }
+
+        #boton-cerrar-sesion {
+            position: fixed;
+            right: 14px;
+            bottom: 14px;
+            z-index: 1000;
+            border: 0;
+            border-radius: 999px;
+            padding: 10px 14px;
+            background: #111;
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+        }
+    `;
+
+    document.head.appendChild(estilo);
+
+    document
+        .getElementById("form-login-supabase")
+        .addEventListener("submit", iniciarSesion);
+
+    login.classList.add("activo");
+}
+
+function ocultarLogin() {
+    const login = document.getElementById("login-supabase");
+
+    if (login) {
+        login.classList.add("oculto");
+    }
+}
+
+async function iniciarSesion(evento) {
+    evento.preventDefault();
+
+    const email =
+        document.getElementById("login-email").value.trim();
+
+    const password =
+        document.getElementById("login-password").value;
+
+    const mensaje =
+        document.getElementById("login-mensaje");
+
+    mensaje.textContent = "Entrando...";
+
+    const { error } =
+        await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+    if (error) {
+        mensaje.textContent =
+            "❌ " + error.message;
+        return;
+    }
+
+    await cargarDatosDelUsuario();
+
+    ocultarLogin();
+}
+
+async function cerrarSesion() {
+    const confirmar =
+        confirm("¿Quieres cerrar sesión?");
+
+    if (!confirmar) return;
+
+    await supabaseClient.auth.signOut();
+
+    location.reload();
+}
+
+function crearBotonCerrarSesion() {
+    if (document.getElementById("boton-cerrar-sesion")) {
+        return;
+    }
+
+    const boton = document.createElement("button");
+
+    boton.id = "boton-cerrar-sesion";
+    boton.textContent = "🚪 Salir";
+    boton.onclick = cerrarSesion;
+
+    document.body.appendChild(boton);
+}
 
 /* =====================================================
-   GUARDAR CLIENTES
+   CARGAR DATOS DEL USUARIO
+===================================================== */
+
+async function cargarDatosDelUsuario() {
+    const {
+        data: {
+            user
+        },
+        error: errorSesion
+    } = await supabaseClient.auth.getUser();
+
+    if (errorSesion || !user) {
+        mostrarLogin();
+        return false;
+    }
+
+    usuarioActual = user;
+
+    const {
+        data: perfil,
+        error: errorPerfil
+    } = await supabaseClient
+        .from("perfiles")
+        .select("tienda_id,nombre,rol")
+        .eq("id", user.id)
+        .single();
+
+    if (errorPerfil || !perfil) {
+        mostrarErrorSupabase(
+            errorPerfil,
+            "No encontramos el perfil de esta cuenta."
+        );
+        return false;
+    }
+
+    tiendaActual = perfil.tienda_id;
+
+    await migrarDatosLocalesSiExisten();
+    await cargarClientesDesdeSupabase();
+    await cargarInventarioDesdeSupabase();
+
+    crearBotonCerrarSesion();
+
+    mostrarClientes();
+    mostrarVentas();
+    mostrarInventario();
+    actualizarInicio();
+
+    return true;
+}
+
+async function cargarClientesDesdeSupabase() {
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("clientes")
+        .select("*")
+        .order("created_at", {
+            ascending: false
+        });
+
+    if (error) {
+        mostrarErrorSupabase(
+            error,
+            "No se pudieron cargar los clientes."
+        );
+        return;
+    }
+
+    clientes =
+        (data || []).map(convertirClienteDesdeDB);
+}
+
+async function cargarInventarioDesdeSupabase() {
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("inventario")
+        .select("*")
+        .order("created_at", {
+            ascending: false
+        });
+
+    if (error) {
+        mostrarErrorSupabase(
+            error,
+            "No se pudo cargar el inventario."
+        );
+        return;
+    }
+
+    inventario =
+        (data || []).map(convertirInventarioDesdeDB);
+}
+
+/* =====================================================
+   MIGRACIÓN DE LOS DATOS ANTIGUOS
+===================================================== */
+
+async function migrarDatosLocalesSiExisten() {
+    if (!usuarioActual || !tiendaActual) {
+        return;
+    }
+
+    const claveMigracion =
+        "donay_migracion_supabase_" +
+        usuarioActual.id;
+
+    if (localStorage.getItem(claveMigracion)) {
+        return;
+    }
+
+    let clientesLocales = [];
+
+    let inventarioLocal = [];
+
+    try {
+        clientesLocales =
+            JSON.parse(
+                localStorage.getItem("clientes")
+            ) || [];
+
+        inventarioLocal =
+            JSON.parse(
+                localStorage.getItem("inventario")
+            ) || [];
+    } catch (error) {
+        console.warn(
+            "No se pudieron leer datos locales.",
+            error
+        );
+    }
+
+    const hayClientes =
+        Array.isArray(clientesLocales) &&
+        clientesLocales.length > 0;
+
+    const hayInventario =
+        Array.isArray(inventarioLocal) &&
+        inventarioLocal.length > 0;
+
+    if (!hayClientes && !hayInventario) {
+        localStorage.setItem(
+            claveMigracion,
+            "sin-datos"
+        );
+        return;
+    }
+
+    const confirmar =
+        confirm(
+            "Encontramos datos antiguos guardados en este navegador.\n\n" +
+            "¿Quieres copiarlos a tu tienda en Supabase?"
+        );
+
+    if (!confirmar) {
+        return;
+    }
+
+    if (hayClientes) {
+        const filasClientes =
+            clientesLocales.map(function(cliente) {
+
+                const estado =
+                    String(cliente.estado || "")
+                        .toLowerCase() === "vendido"
+                        ? "vendido"
+                        : "pendiente";
+
+                let fechaRegistro = null;
+
+                if (
+                    cliente.fechaRegistro &&
+                    cliente.fechaRegistro !== "Sin fecha"
+                ) {
+                    const posible =
+                        new Date(
+                            String(cliente.fechaRegistro) +
+                            " " +
+                            String(
+                                cliente.horaRegistro || ""
+                            )
+                        );
+
+                    if (!Number.isNaN(posible.getTime())) {
+                        fechaRegistro =
+                            posible.toISOString();
+                    }
+                }
+
+                if (!fechaRegistro) {
+                    fechaRegistro =
+                        new Date().toISOString();
+                }
+
+                return {
+                    tienda_id: tiendaActual,
+                    nombre: cliente.nombre || "",
+                    whatsapp: cliente.whatsapp || "",
+                    producto: cliente.producto || "",
+                    marca: cliente.marca || "Sin marca",
+                    categoria: cliente.categoria || "Otro",
+                    talla: cliente.talla || "S",
+                    precio: Number(cliente.precio) || 0,
+                    costo: Number(cliente.costo) || 0,
+                    estado: estado,
+                    fecha_registro: fechaRegistro
+                };
+            });
+
+        const {
+            error
+        } = await supabaseClient
+            .from("clientes")
+            .insert(filasClientes);
+
+        if (error) {
+            mostrarErrorSupabase(
+                error,
+                "No se pudieron migrar los clientes antiguos."
+            );
+            return;
+        }
+    }
+
+    if (hayInventario) {
+        const filasInventario =
+            inventarioLocal.map(function(producto) {
+
+                return {
+                    tienda_id: tiendaActual,
+                    producto: producto.producto || "",
+                    marca: producto.marca || "Sin marca",
+                    talla: producto.talla || "S",
+                    cantidad: Number(producto.cantidad) || 0,
+                    precio: Number(producto.precio) || 0,
+                    costo: Number(producto.costo) || 0
+                };
+            });
+
+        const {
+            error
+        } = await supabaseClient
+            .from("inventario")
+            .insert(filasInventario);
+
+        if (error) {
+            mostrarErrorSupabase(
+                error,
+                "No se pudo migrar el inventario antiguo."
+            );
+            return;
+        }
+    }
+
+    localStorage.setItem(
+        claveMigracion,
+        new Date().toISOString()
+    );
+
+    alert(
+        "✅ Tus datos antiguos fueron copiados a Supabase."
+    );
+}
+
+/* =====================================================
+   COMPATIBILIDAD LOCAL
+   Estas funciones ya no guardan la base de datos.
+   Supabase es ahora la fuente principal.
 ===================================================== */
 
 function guardarClientes() {
-
-    localStorage.setItem(
-        "clientes",
-        JSON.stringify(clientes)
-    );
-
+    return true;
 }
-
-
-/* =====================================================
-   GUARDAR INVENTARIO
-===================================================== */
 
 function guardarInventario() {
-
-    localStorage.setItem(
-        "inventario",
-        JSON.stringify(inventario)
-    );
-
+    return true;
 }
-
 
 /* =====================================================
    FORMATO DE DINERO
@@ -113,7 +627,6 @@ function dinero(valor) {
     );
 
 }
-
 
 /* =====================================================
    CALCULAR GANANCIA
@@ -128,10 +641,10 @@ function calcularGanancia(cliente) {
 
 }
 
-
 /* =====================================================
    NAVEGACIÓN
 ===================================================== */
+
 
 function mostrarSeccion(nombre, boton) {
 
@@ -561,101 +1074,80 @@ filtroEstado.addEventListener(
 
 formulario.addEventListener(
     "submit",
-    function(evento) {
+    async function(evento) {
 
         evento.preventDefault();
 
+        if (!supabaseClient || !tiendaActual) {
+            alert("Espera a que la tienda termine de cargar.");
+            return;
+        }
 
-        const ahora =
-            new Date();
-
+        const ahora = new Date();
 
         const cliente = {
+            tienda_id: tiendaActual,
 
             nombre:
-                document.getElementById(
-                    "nombre"
-                ).value.trim(),
-
+                document.getElementById("nombre").value.trim(),
 
             whatsapp:
-                document.getElementById(
-                    "whatsapp"
-                ).value.trim(),
-
+                document.getElementById("whatsapp").value.trim(),
 
             producto:
-                document.getElementById(
-                    "producto"
-                ).value.trim(),
-
+                document.getElementById("producto").value.trim(),
 
             marca:
-                document.getElementById(
-                    "marca"
-                ).value,
-
+                document.getElementById("marca").value,
 
             categoria:
-                document.getElementById(
-                    "categoria"
-                ).value,
-
+                document.getElementById("categoria").value,
 
             talla:
-                document.getElementById(
-                    "talla"
-                ).value,
+                document.getElementById("talla").value,
 
-
-            fechaRegistro:
-                ahora.toLocaleDateString(
-                    "es-CO"
-                ),
-
-
-            horaRegistro:
-                ahora.toLocaleTimeString(
-                    "es-CO"
-                ),
-
+            fecha_registro:
+                ahora.toISOString(),
 
             estado:
-                "Pendiente",
-
+                "pendiente",
 
             precio:
                 Number(
-                    document.getElementById(
-                        "precio"
-                    ).value
+                    document.getElementById("precio").value
                 ) || 0,
-
 
             costo:
                 Number(
-                    document.getElementById(
-                        "costo"
-                    ).value
+                    document.getElementById("costo").value
                 ) || 0
-
         };
 
+        const {
+            data,
+            error
+        } = await supabaseClient
+            .from("clientes")
+            .insert(cliente)
+            .select()
+            .single();
 
-        clientes.push(cliente);
+        if (error) {
+            mostrarErrorSupabase(
+                error,
+                "No se pudo registrar el cliente."
+            );
+            return;
+        }
 
-
-        guardarClientes();
-
+        clientes.unshift(
+            convertirClienteDesdeDB(data)
+        );
 
         formulario.reset();
 
-
         mostrarClientes();
-
-
         actualizarInicio();
-
 
         alert(
             "✅ Cliente registrado correctamente"
@@ -669,16 +1161,13 @@ formulario.addEventListener(
    EDITAR CLIENTE
 ===================================================== */
 
-function editarCliente(indice) {
+async function editarCliente(indice) {
 
-    const cliente =
-        clientes[indice];
-
+    const cliente = clientes[indice];
 
     if (!cliente) {
         return;
     }
-
 
     const nuevoNombre =
         prompt(
@@ -686,11 +1175,7 @@ function editarCliente(indice) {
             cliente.nombre
         );
 
-
-    if (nuevoNombre === null) {
-        return;
-    }
-
+    if (nuevoNombre === null) return;
 
     const nuevoWhatsapp =
         prompt(
@@ -698,11 +1183,7 @@ function editarCliente(indice) {
             cliente.whatsapp
         );
 
-
-    if (nuevoWhatsapp === null) {
-        return;
-    }
-
+    if (nuevoWhatsapp === null) return;
 
     const nuevoProducto =
         prompt(
@@ -710,11 +1191,7 @@ function editarCliente(indice) {
             cliente.producto
         );
 
-
-    if (nuevoProducto === null) {
-        return;
-    }
-
+    if (nuevoProducto === null) return;
 
     const nuevaMarca =
         prompt(
@@ -722,11 +1199,7 @@ function editarCliente(indice) {
             cliente.marca
         );
 
-
-    if (nuevaMarca === null) {
-        return;
-    }
-
+    if (nuevaMarca === null) return;
 
     const nuevaCategoria =
         prompt(
@@ -734,11 +1207,7 @@ function editarCliente(indice) {
             cliente.categoria
         );
 
-
-    if (nuevaCategoria === null) {
-        return;
-    }
-
+    if (nuevaCategoria === null) return;
 
     const nuevaTalla =
         prompt(
@@ -746,11 +1215,7 @@ function editarCliente(indice) {
             cliente.talla
         );
 
-
-    if (nuevaTalla === null) {
-        return;
-    }
-
+    if (nuevaTalla === null) return;
 
     const nuevoEstado =
         prompt(
@@ -758,11 +1223,7 @@ function editarCliente(indice) {
             cliente.estado
         );
 
-
-    if (nuevoEstado === null) {
-        return;
-    }
-
+    if (nuevoEstado === null) return;
 
     const nuevoPrecio =
         prompt(
@@ -770,11 +1231,7 @@ function editarCliente(indice) {
             cliente.precio
         );
 
-
-    if (nuevoPrecio === null) {
-        return;
-    }
-
+    if (nuevoPrecio === null) return;
 
     const nuevoCosto =
         prompt(
@@ -782,59 +1239,53 @@ function editarCliente(indice) {
             cliente.costo
         );
 
+    if (nuevoCosto === null) return;
 
-    if (nuevoCosto === null) {
+    const estadoNormalizado =
+        nuevoEstado.trim().toLowerCase() === "vendido"
+            ? "vendido"
+            : "pendiente";
+
+    const cambios = {
+        nombre: nuevoNombre.trim(),
+        whatsapp: nuevoWhatsapp.trim(),
+        producto: nuevoProducto.trim(),
+        marca: nuevaMarca.trim() || "Sin marca",
+        categoria: nuevaCategoria.trim() || "Otro",
+        talla: nuevaTalla.trim(),
+        estado: estadoNormalizado,
+        precio: Number(nuevoPrecio) || 0,
+        costo: Number(nuevoCosto) || 0
+    };
+
+    if (estadoNormalizado === "vendido" && !cliente.fechaVenta) {
+        cambios.fecha_venta = new Date().toISOString();
+    }
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("clientes")
+        .update(cambios)
+        .eq("id", cliente.id)
+        .select()
+        .single();
+
+    if (error) {
+        mostrarErrorSupabase(
+            error,
+            "No se pudo actualizar el cliente."
+        );
         return;
     }
 
-
-    cliente.nombre =
-        nuevoNombre.trim();
-
-
-    cliente.whatsapp =
-        nuevoWhatsapp.trim();
-
-
-    cliente.producto =
-        nuevoProducto.trim();
-
-
-    cliente.marca =
-        nuevaMarca.trim() || "Sin marca";
-
-
-    cliente.categoria =
-        nuevaCategoria.trim() || "Otro";
-
-
-    cliente.talla =
-        nuevaTalla.trim();
-
-
-    cliente.estado =
-        nuevoEstado.trim();
-
-
-    cliente.precio =
-        Number(nuevoPrecio) || 0;
-
-
-    cliente.costo =
-        Number(nuevoCosto) || 0;
-
-
-    guardarClientes();
-
+    clientes[indice] =
+        convertirClienteDesdeDB(data);
 
     mostrarClientes();
-
-
     actualizarInicio();
-
-
     mostrarVentas();
-
 }
 
 
@@ -842,16 +1293,13 @@ function editarCliente(indice) {
    MARCAR VENDIDO
 ===================================================== */
 
-function marcarVendido(indice) {
+async function marcarVendido(indice) {
 
-    const cliente =
-        clientes[indice];
-
+    const cliente = clientes[indice];
 
     if (!cliente) {
         return;
     }
-
 
     const confirmar =
         confirm(
@@ -860,11 +1308,7 @@ function marcarVendido(indice) {
             " como VENDIDO?"
         );
 
-
-    if (!confirmar) {
-        return;
-    }
-
+    if (!confirmar) return;
 
     const precio =
         prompt(
@@ -872,11 +1316,7 @@ function marcarVendido(indice) {
             cliente.precio || 0
         );
 
-
-    if (precio === null) {
-        return;
-    }
-
+    if (precio === null) return;
 
     const costo =
         prompt(
@@ -884,40 +1324,77 @@ function marcarVendido(indice) {
             cliente.costo || 0
         );
 
+    if (costo === null) return;
 
-    if (costo === null) {
+    const precioNumero =
+        Number(precio) || 0;
+
+    const costoNumero =
+        Number(costo) || 0;
+
+    const fechaVenta =
+        new Date().toISOString();
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("clientes")
+        .update({
+            estado: "vendido",
+            precio: precioNumero,
+            costo: costoNumero,
+            fecha_venta: fechaVenta
+        })
+        .eq("id", cliente.id)
+        .select()
+        .single();
+
+    if (error) {
+        mostrarErrorSupabase(
+            error,
+            "No se pudo registrar la venta."
+        );
         return;
     }
 
+    clientes[indice] =
+        convertirClienteDesdeDB(data);
 
-    cliente.estado =
-        "Vendido";
+    /* Guardamos también la venta en la tabla ventas */
+    const {
+        error: errorVenta
+    } = await supabaseClient
+        .from("ventas")
+        .insert({
+            tienda_id: tiendaActual,
+            cliente_id: cliente.id,
+            cliente_nombre: cliente.nombre,
+            whatsapp: cliente.whatsapp,
+            producto: cliente.producto,
+            marca: cliente.marca,
+            talla: cliente.talla,
+            precio: precioNumero,
+            costo: costoNumero,
+            ganancia:
+                precioNumero - costoNumero,
+            fecha_venta: fechaVenta
+        });
 
-
-    cliente.precio =
-        Number(precio) || 0;
-
-
-    cliente.costo =
-        Number(costo) || 0;
-
-
-    guardarClientes();
-
+    if (errorVenta) {
+        console.warn(
+            "El cliente se marcó vendido, pero la copia de la venta no pudo guardarse.",
+            errorVenta
+        );
+    }
 
     mostrarClientes();
-
-
     actualizarInicio();
-
-
     mostrarVentas();
-
 
     alert(
         "✅ Venta registrada correctamente"
     );
-
 }
 
 
@@ -925,16 +1402,13 @@ function marcarVendido(indice) {
    ELIMINAR CLIENTE
 ===================================================== */
 
-function eliminarCliente(indice) {
+async function eliminarCliente(indice) {
 
-    const cliente =
-        clientes[indice];
-
+    const cliente = clientes[indice];
 
     if (!cliente) {
         return;
     }
-
 
     const confirmar =
         confirm(
@@ -943,29 +1417,34 @@ function eliminarCliente(indice) {
             "?"
         );
 
+    if (!confirmar) return;
 
-    if (!confirmar) {
+    /* Primero quitamos las ventas relacionadas */
+    await supabaseClient
+        .from("ventas")
+        .delete()
+        .eq("cliente_id", cliente.id);
+
+    const {
+        error
+    } = await supabaseClient
+        .from("clientes")
+        .delete()
+        .eq("id", cliente.id);
+
+    if (error) {
+        mostrarErrorSupabase(
+            error,
+            "No se pudo eliminar el cliente."
+        );
         return;
     }
 
-
-    clientes.splice(
-        indice,
-        1
-    );
-
-
-    guardarClientes();
-
+    clientes.splice(indice, 1);
 
     mostrarClientes();
-
-
     actualizarInicio();
-
-
     mostrarVentas();
-
 }
 
 
@@ -1246,25 +1725,27 @@ function mostrarVentas() {
    INVENTARIO
 ===================================================== */
 
-function agregarProductoInventario() {
+async function agregarProductoInventario() {
+
+    if (!supabaseClient || !tiendaActual) {
+        alert("Espera a que la tienda termine de cargar.");
+        return;
+    }
 
     const producto =
         document.getElementById(
             "inventario-producto"
         ).value.trim();
 
-
     const marca =
         document.getElementById(
             "inventario-marca"
         ).value;
 
-
     const talla =
         document.getElementById(
             "inventario-talla"
         ).value;
-
 
     const cantidad =
         Number(
@@ -1273,14 +1754,12 @@ function agregarProductoInventario() {
             ).value
         ) || 0;
 
-
     const precio =
         Number(
             document.getElementById(
                 "inventario-precio"
             ).value
         ) || 0;
-
 
     const costo =
         Number(
@@ -1289,85 +1768,78 @@ function agregarProductoInventario() {
             ).value
         ) || 0;
 
-
     if (!producto) {
-
         alert(
             "Escribe el nombre del producto."
         );
-
         return;
-
     }
 
-
     if (cantidad <= 0) {
-
         alert(
             "La cantidad debe ser mayor que 0."
         );
-
         return;
-
     }
 
-
     const nuevoProducto = {
-
+        tienda_id: tiendaActual,
         producto: producto,
-
         marca: marca,
-
         talla: talla,
-
         cantidad: cantidad,
-
         precio: precio,
-
         costo: costo
-
     };
 
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("inventario")
+        .insert(nuevoProducto)
+        .select()
+        .single();
 
-    inventario.push(
-        nuevoProducto
+    if (error) {
+        mostrarErrorSupabase(
+            error,
+            "No se pudo agregar el producto al inventario."
+        );
+        return;
+    }
+
+    inventario.unshift(
+        convertirInventarioDesdeDB(data)
     );
-
-
-    guardarInventario();
-
 
     document.getElementById(
         "inventario-producto"
     ).value = "";
 
-
     document.getElementById(
         "inventario-cantidad"
     ).value = "1";
-
 
     document.getElementById(
         "inventario-precio"
     ).value = "";
 
-
     document.getElementById(
         "inventario-costo"
     ).value = "";
 
-
     mostrarInventario();
-
-
     actualizarInicio();
-
 
     alert(
         "✅ Producto agregado al inventario."
     );
-
 }
+
+/* =====================================================
+   MOSTRAR INVENTARIO
+===================================================== */
 
 
 /* =====================================================
@@ -1491,16 +1963,13 @@ function mostrarInventario() {
    ELIMINAR PRODUCTO INVENTARIO
 ===================================================== */
 
-function eliminarProductoInventario(indice) {
+async function eliminarProductoInventario(indice) {
 
-    const producto =
-        inventario[indice];
-
+    const producto = inventario[indice];
 
     if (!producto) {
         return;
     }
-
 
     const confirmar =
         confirm(
@@ -1509,26 +1978,27 @@ function eliminarProductoInventario(indice) {
             " del inventario?"
         );
 
+    if (!confirmar) return;
 
-    if (!confirmar) {
+    const {
+        error
+    } = await supabaseClient
+        .from("inventario")
+        .delete()
+        .eq("id", producto.id);
+
+    if (error) {
+        mostrarErrorSupabase(
+            error,
+            "No se pudo eliminar el producto."
+        );
         return;
     }
 
-
-    inventario.splice(
-        indice,
-        1
-    );
-
-
-    guardarInventario();
-
+    inventario.splice(indice, 1);
 
     mostrarInventario();
-
-
     actualizarInicio();
-
 }
 
 
@@ -1974,17 +2444,48 @@ if (modalRecibo) {
 
 
 /* =====================================================
-   INICIAR SISTEMA
+   INICIAR SISTEMA CON SUPABASE
 ===================================================== */
 
-guardarClientes();
+async function iniciarSistemaSupabase() {
 
-guardarInventario();
+    try {
 
-mostrarClientes();
+        await cargarLibreriaSupabase();
 
-mostrarVentas();
+        supabaseClient =
+            window.supabase.createClient(
+                SUPABASE_URL,
+                SUPABASE_PUBLISHABLE_KEY
+            );
 
-mostrarInventario();
+        const {
+            data: {
+                session
+            }
+        } = await supabaseClient.auth.getSession();
 
-actualizarInicio();
+        if (!session) {
+            cargandoSistema = false;
+            mostrarLogin();
+            return;
+        }
+
+        await cargarDatosDelUsuario();
+
+        cargandoSistema = false;
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "❌ No se pudo conectar con Supabase.\n\n" +
+            "Revisa tu conexión a internet."
+        );
+
+    }
+}
+
+iniciarSistemaSupabase();
+
