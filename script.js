@@ -140,7 +140,7 @@ function mostrarLogin() {
     let login = document.getElementById("login-supabase");
 
     if (login) {
-        login.classList.add("activo");
+        login.classList.remove("oculto");
         return;
     }
 
@@ -150,29 +150,75 @@ function mostrarLogin() {
     login.innerHTML = `
         <div class="login-caja">
             <h1>🛍️ DONAY STORE</h1>
-            <p>Inicia sesión para entrar a tu tienda.</p>
 
-            <form id="form-login-supabase">
-                <input
-                    id="login-email"
-                    type="email"
-                    placeholder="Correo electrónico"
-                    autocomplete="email"
-                    required
-                >
+            <div id="modo-login">
+                <p>Inicia sesión para entrar a tu tienda.</p>
 
-                <input
-                    id="login-password"
-                    type="password"
-                    placeholder="Contraseña"
-                    autocomplete="current-password"
-                    required
-                >
+                <form id="form-login-supabase">
+                    <input
+                        id="login-email"
+                        type="email"
+                        placeholder="Correo electrónico"
+                        autocomplete="email"
+                        required
+                    >
 
-                <button type="submit">
-                    🔐 Iniciar sesión
+                    <input
+                        id="login-password"
+                        type="password"
+                        placeholder="Contraseña"
+                        autocomplete="current-password"
+                        required
+                    >
+
+                    <button type="submit">
+                        🔐 Iniciar sesión
+                    </button>
+                </form>
+
+                <button type="button" id="mostrar-registro" class="boton-secundario">
+                    🏪 Crear mi tienda
                 </button>
-            </form>
+            </div>
+
+            <div id="modo-registro" class="oculto-login">
+                <p>Crea tu cuenta y tu tienda en DONAY STORE.</p>
+
+                <form id="form-registro-supabase">
+                    <input
+                        id="registro-tienda"
+                        type="text"
+                        placeholder="Nombre de tu tienda"
+                        autocomplete="organization"
+                        required
+                    >
+
+                    <input
+                        id="registro-email"
+                        type="email"
+                        placeholder="Correo electrónico"
+                        autocomplete="email"
+                        required
+                    >
+
+                    <input
+                        id="registro-password"
+                        type="password"
+                        placeholder="Crea una contraseña"
+                        autocomplete="new-password"
+                        minlength="6"
+                        required
+                    >
+
+                    <button type="submit">
+                        🚀 Crear mi cuenta
+                    </button>
+                </form>
+
+                <button type="button" id="volver-login" class="boton-secundario">
+                    ← Ya tengo una cuenta
+                </button>
+            </div>
 
             <p id="login-mensaje" class="login-mensaje"></p>
         </div>
@@ -200,6 +246,8 @@ function mostrarLogin() {
 
         .login-caja {
             width: min(420px, 100%);
+            max-height: 92vh;
+            overflow-y: auto;
             background: #fff;
             color: #111;
             border-radius: 18px;
@@ -218,7 +266,8 @@ function mostrarLogin() {
             margin: 8px 0 20px;
         }
 
-        #form-login-supabase input {
+        #form-login-supabase input,
+        #form-registro-supabase input {
             width: 100%;
             box-sizing: border-box;
             margin: 7px 0;
@@ -228,7 +277,8 @@ function mostrarLogin() {
             font-size: 16px;
         }
 
-        #form-login-supabase button {
+        #form-login-supabase button,
+        #form-registro-supabase button {
             width: 100%;
             margin-top: 10px;
             padding: 14px;
@@ -239,6 +289,23 @@ function mostrarLogin() {
             font-size: 16px;
             font-weight: 700;
             cursor: pointer;
+        }
+
+        .boton-secundario {
+            width: 100%;
+            margin-top: 10px;
+            padding: 12px;
+            border: 1px solid #111;
+            border-radius: 10px;
+            background: #fff;
+            color: #111;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .oculto-login {
+            display: none;
         }
 
         .login-mensaje {
@@ -267,7 +334,31 @@ function mostrarLogin() {
         .getElementById("form-login-supabase")
         .addEventListener("submit", iniciarSesion);
 
-    login.classList.add("activo");
+    document
+        .getElementById("form-registro-supabase")
+        .addEventListener("submit", registrarTienda);
+
+    document
+        .getElementById("mostrar-registro")
+        .addEventListener("click", mostrarFormularioRegistro);
+
+    document
+        .getElementById("volver-login")
+        .addEventListener("click", mostrarFormularioLogin);
+
+    login.classList.remove("oculto");
+}
+
+function mostrarFormularioRegistro() {
+    document.getElementById("modo-login").style.display = "none";
+    document.getElementById("modo-registro").style.display = "block";
+    document.getElementById("login-mensaje").textContent = "";
+}
+
+function mostrarFormularioLogin() {
+    document.getElementById("modo-registro").style.display = "none";
+    document.getElementById("modo-login").style.display = "block";
+    document.getElementById("login-mensaje").textContent = "";
 }
 
 function ocultarLogin() {
@@ -306,6 +397,57 @@ async function iniciarSesion(evento) {
 
     await cargarDatosDelUsuario();
 
+    ocultarLogin();
+}
+
+async function registrarTienda(evento) {
+    evento.preventDefault();
+
+    const nombreTienda =
+        document.getElementById("registro-tienda").value.trim();
+
+    const email =
+        document.getElementById("registro-email").value.trim();
+
+    const password =
+        document.getElementById("registro-password").value;
+
+    const mensaje =
+        document.getElementById("login-mensaje");
+
+    if (!nombreTienda) {
+        mensaje.textContent = "❌ Escribe el nombre de tu tienda.";
+        return;
+    }
+
+    mensaje.textContent = "Creando tu tienda...";
+
+    const { data, error } =
+        await supabaseClient.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+                data: {
+                    nombre_tienda: nombreTienda
+                }
+            }
+        });
+
+    if (error) {
+        mensaje.textContent =
+            "❌ " + error.message;
+        return;
+    }
+
+    if (!data.session) {
+        mensaje.textContent =
+            "✅ Cuenta creada. Revisa tu correo para confirmar la cuenta y luego inicia sesión.";
+        return;
+    }
+
+    await cargarDatosDelUsuario();
+
+    mensaje.textContent = "✅ ¡Tienda creada correctamente!";
     ocultarLogin();
 }
 
@@ -371,6 +513,26 @@ async function cargarDatosDelUsuario() {
     }
 
     tiendaActual = perfil.tienda_id;
+
+    // Si la cuenta fue creada desde "Crear mi tienda",
+    // guardamos el nombre elegido en la tienda.
+    const nombreTienda =
+        user.user_metadata?.nombre_tienda?.trim();
+
+    if (nombreTienda && perfil.rol === "dueño") {
+        const { error: errorNombreTienda } =
+            await supabaseClient
+                .from("tiendas")
+                .update({ nombre: nombreTienda })
+                .eq("id", tiendaActual);
+
+        if (errorNombreTienda) {
+            console.warn(
+                "No se pudo guardar el nombre de la tienda:",
+                errorNombreTienda
+            );
+        }
+    }
 
     await migrarDatosLocalesSiExisten();
     await cargarClientesDesdeSupabase();
