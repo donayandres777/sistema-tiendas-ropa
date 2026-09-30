@@ -514,16 +514,16 @@ async function cargarDatosDelUsuario() {
 
     tiendaActual = perfil.tienda_id;
 
-    // Si la cuenta fue creada desde "Crear mi tienda",
-    // guardamos el nombre elegido en la tienda.
-    const nombreTienda =
-        user.user_metadata?.nombre_tienda?.trim();
+    // Guardar y mostrar el nombre de la tienda.
+    // Cada cuenta usa solamente el nombre de SU propia tienda.
+    const nombreTiendaMetadata =
+        user.user_metadata?.nombre_tienda?.trim() || "";
 
-    if (nombreTienda && perfil.rol === "dueño") {
+    if (nombreTiendaMetadata && perfil.rol === "dueño") {
         const { error: errorNombreTienda } =
             await supabaseClient
                 .from("tiendas")
-                .update({ nombre: nombreTienda })
+                .update({ nombre: nombreTiendaMetadata })
                 .eq("id", tiendaActual);
 
         if (errorNombreTienda) {
@@ -534,7 +534,29 @@ async function cargarDatosDelUsuario() {
         }
     }
 
-    await migrarDatosLocalesSiExisten();
+    const {
+        data: datosTienda,
+        error: errorTienda
+    } = await supabaseClient
+        .from("tiendas")
+        .select("nombre")
+        .eq("id", tiendaActual)
+        .single();
+
+    const nombreTienda =
+        nombreTiendaMetadata ||
+        (datosTienda && datosTienda.nombre) ||
+        "DONAY STORE";
+
+    if (errorTienda) {
+        console.warn(
+            "No se pudo leer el nombre de la tienda:",
+            errorTienda
+        );
+    }
+
+    actualizarNombreTiendaEnPantalla(nombreTienda);
+
     await cargarClientesDesdeSupabase();
     await cargarInventarioDesdeSupabase();
 
@@ -595,174 +617,49 @@ async function cargarInventarioDesdeSupabase() {
 }
 
 /* =====================================================
-   MIGRACIÓN DE LOS DATOS ANTIGUOS
+   NOMBRE DE LA TIENDA
+   Cada cuenta ve el nombre de su propia tienda.
 ===================================================== */
 
-async function migrarDatosLocalesSiExisten() {
-    if (!usuarioActual || !tiendaActual) {
-        return;
-    }
+function actualizarNombreTiendaEnPantalla(nombre) {
 
-    const claveMigracion =
-        "donay_migracion_supabase_" +
-        usuarioActual.id;
+    const nombreLimpio =
+        String(nombre || "DONAY STORE").trim() ||
+        "DONAY STORE";
 
-    if (localStorage.getItem(claveMigracion)) {
-        return;
-    }
+    document.title =
+        nombreLimpio + " | Gestión de Clientes";
 
-    let clientesLocales = [];
-
-    let inventarioLocal = [];
-
-    try {
-        clientesLocales =
-            JSON.parse(
-                localStorage.getItem("clientes")
-            ) || [];
-
-        inventarioLocal =
-            JSON.parse(
-                localStorage.getItem("inventario")
-            ) || [];
-    } catch (error) {
-        console.warn(
-            "No se pudieron leer datos locales.",
-            error
-        );
-    }
-
-    const hayClientes =
-        Array.isArray(clientesLocales) &&
-        clientesLocales.length > 0;
-
-    const hayInventario =
-        Array.isArray(inventarioLocal) &&
-        inventarioLocal.length > 0;
-
-    if (!hayClientes && !hayInventario) {
-        localStorage.setItem(
-            claveMigracion,
-            "sin-datos"
-        );
-        return;
-    }
-
-    const confirmar =
-        confirm(
-            "Encontramos datos antiguos guardados en este navegador.\n\n" +
-            "¿Quieres copiarlos a tu tienda en Supabase?"
+    // Cambia el titulo principal de la tienda,
+    // pero no toca el formulario de inicio de sesión.
+    const candidatos =
+        Array.from(
+            document.querySelectorAll("h1, h2, [data-nombre-tienda]")
         );
 
-    if (!confirmar) {
-        return;
-    }
+    candidatos.forEach(function(elemento) {
 
-    if (hayClientes) {
-        const filasClientes =
-            clientesLocales.map(function(cliente) {
-
-                const estado =
-                    String(cliente.estado || "")
-                        .toLowerCase() === "vendido"
-                        ? "vendido"
-                        : "pendiente";
-
-                let fechaRegistro = null;
-
-                if (
-                    cliente.fechaRegistro &&
-                    cliente.fechaRegistro !== "Sin fecha"
-                ) {
-                    const posible =
-                        new Date(
-                            String(cliente.fechaRegistro) +
-                            " " +
-                            String(
-                                cliente.horaRegistro || ""
-                            )
-                        );
-
-                    if (!Number.isNaN(posible.getTime())) {
-                        fechaRegistro =
-                            posible.toISOString();
-                    }
-                }
-
-                if (!fechaRegistro) {
-                    fechaRegistro =
-                        new Date().toISOString();
-                }
-
-                return {
-                    tienda_id: tiendaActual,
-                    nombre: cliente.nombre || "",
-                    whatsapp: cliente.whatsapp || "",
-                    producto: cliente.producto || "",
-                    marca: cliente.marca || "Sin marca",
-                    categoria: cliente.categoria || "Otro",
-                    talla: cliente.talla || "S",
-                    precio: Number(cliente.precio) || 0,
-                    costo: Number(cliente.costo) || 0,
-                    estado: estado,
-                    fecha_registro: fechaRegistro
-                };
-            });
-
-        const {
-            error
-        } = await supabaseClient
-            .from("clientes")
-            .insert(filasClientes);
-
-        if (error) {
-            mostrarErrorSupabase(
-                error,
-                "No se pudieron migrar los clientes antiguos."
-            );
+        if (
+            elemento.closest("#login-supabase") ||
+            elemento.closest("#modal-recibo")
+        ) {
             return;
         }
-    }
 
-    if (hayInventario) {
-        const filasInventario =
-            inventarioLocal.map(function(producto) {
+        const texto =
+            elemento.textContent.trim().toUpperCase();
 
-                return {
-                    tienda_id: tiendaActual,
-                    producto: producto.producto || "",
-                    marca: producto.marca || "Sin marca",
-                    talla: producto.talla || "S",
-                    cantidad: Number(producto.cantidad) || 0,
-                    precio: Number(producto.precio) || 0,
-                    costo: Number(producto.costo) || 0
-                };
-            });
-
-        const {
-            error
-        } = await supabaseClient
-            .from("inventario")
-            .insert(filasInventario);
-
-        if (error) {
-            mostrarErrorSupabase(
-                error,
-                "No se pudo migrar el inventario antiguo."
-            );
-            return;
+        if (
+            texto === "DONAY STORE" ||
+            texto.includes("DONAY STORE")
+        ) {
+            elemento.textContent = nombreLimpio;
         }
-    }
 
-    localStorage.setItem(
-        claveMigracion,
-        new Date().toISOString()
-    );
+    });
 
-    alert(
-        "✅ Tus datos antiguos fueron copiados a Supabase."
-    );
 }
+
 
 /* =====================================================
    COMPATIBILIDAD LOCAL
@@ -2288,7 +2185,10 @@ function mostrarRecibo(indice) {
     contenido.innerHTML = `
 
         <h2>
-            🧾 DONAY STORE
+            🧾 ${
+                document.title.replace(" | Gestión de Clientes", "") ||
+                "DONAY STORE"
+            }
         </h2>
 
         <p>
@@ -2408,7 +2308,10 @@ function imprimirRecibo() {
         <head>
 
             <title>
-                Recibo DONAY STORE
+                Recibo ${
+                    document.title.replace(" | Gestión de Clientes", "") ||
+                    "DONAY STORE"
+                }
             </title>
 
             <style>
