@@ -1,2556 +1,390 @@
-/* =====================================================
-   DONAY STORE
-   SISTEMA DE CLIENTES, VENTAS E INVENTARIO
-   VERSION SUPABASE
-===================================================== */
+/* =========================================================
+   MI CONTABILIDAD
+   Gestión de negocios, ventas, productos, servicios,
+   gastos, clientes y finanzas.
+   Supabase - versión multi-negocio
+========================================================= */
 
-/*
-   IMPORTANTE:
-   Esta es la Publishable Key de Supabase.
-   NO poner nunca una Secret Key aquí.
-*/
 const SUPABASE_URL = "https://nouwdqeznmaphvisrxyq.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_WhcUZvNR-Rn1ThN4qnF6Vg_4jZJ5qoN";
+const APP_URL = "https://donayandres777.github.io/sistema-tiendas-ropa/";
 
 let supabaseClient = null;
 let usuarioActual = null;
 let tiendaActual = null;
-let cargandoSistema = true;
-
-/* Carga Supabase JS desde CDN para este sitio HTML normal */
-function cargarLibreriaSupabase() {
-    return new Promise(function(resolve, reject) {
-        if (window.supabase) {
-            resolve();
-            return;
-        }
-
-        const script = document.createElement("script");
-        script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
-        script.onload = resolve;
-        script.onerror = function() {
-            reject(new Error("No se pudo cargar Supabase."));
-        };
-        document.head.appendChild(script);
-    });
-}
-
-/* =====================================================
-   DATOS
-===================================================== */
-
-const formulario = document.getElementById("formulario-clientes");
-const lista = document.getElementById("lista-clientes");
-const contador = document.getElementById("contador-clientes");
-const buscador = document.getElementById("buscador");
-const filtroEstado = document.getElementById("filtro-estado");
-
+let productosServicios = [];
+let gastos = [];
 let clientes = [];
-let inventario = [];
+let ventas = [];
+let cuentas = [];
+let pagos = [];
+let periodoActual = "mes";
 
-/* =====================================================
-   UTILIDADES SUPABASE
-===================================================== */
-
-function mostrarErrorSupabase(error, mensaje) {
-    console.error(mensaje, error);
-
-    alert(
-        "❌ " + mensaje +
-        "\n\n" +
-        (error && error.message ? error.message : "Revisa tu conexión.")
-    );
+function cargarSupabase() {
+    return new Promise((resolve, reject) => {
+        if (window.supabase) return resolve();
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+        s.onload = resolve;
+        s.onerror = () => reject(new Error("No se pudo cargar Supabase."));
+        document.head.appendChild(s);
+    });
 }
 
-function fechaTexto(fecha) {
-    if (!fecha) return "Sin fecha";
+const $ = id => document.getElementById(id);
+const esc = value => String(value ?? "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+const num = value => Number(value) || 0;
+const dinero = value => new Intl.NumberFormat("es-CO", {style:"currency", currency: tiendaActual?.moneda || "COP", maximumFractionDigits:0}).format(num(value));
+const fechaHoy = () => new Date().toISOString().slice(0,10);
+const fechaTexto = value => value ? new Date(value).toLocaleDateString("es-CO") : "—";
 
-    const d = new Date(fecha);
-
-    if (Number.isNaN(d.getTime())) {
-        return String(fecha);
-    }
-
-    return d.toLocaleDateString("es-CO");
+function errorUI(error, mensaje = "No se pudo completar la operación.") {
+    console.error(error);
+    alert("❌ " + mensaje + "\n\n" + (error?.message || "Revisa tu conexión."));
 }
 
-function horaTexto(fecha) {
-    if (!fecha) return "Sin hora";
-
-    const d = new Date(fecha);
-
-    if (Number.isNaN(d.getTime())) {
-        return "Sin hora";
-    }
-
-    return d.toLocaleTimeString("es-CO");
+function ponerTexto(ids, texto) {
+    ids.forEach(id => { if ($(id)) $(id).textContent = texto; });
 }
 
-function convertirClienteDesdeDB(cliente) {
-    return {
-        id: cliente.id,
-
-        nombre: cliente.nombre || "",
-        whatsapp: cliente.whatsapp || "",
-        producto: cliente.producto || "",
-        talla: cliente.talla || "S",
-        marca: cliente.marca || "Sin marca",
-        categoria: cliente.categoria || "Otro",
-
-        fechaRegistro:
-            cliente.fecha_registro
-                ? fechaTexto(cliente.fecha_registro)
-                : "Sin fecha",
-
-        horaRegistro:
-            cliente.fecha_registro
-                ? horaTexto(cliente.fecha_registro)
-                : "Sin hora",
-
-        estado:
-            cliente.estado === "vendido"
-                ? "Vendido"
-                : "Pendiente",
-
-        precio: Number(cliente.precio) || 0,
-        costo: Number(cliente.costo) || 0,
-
-        fechaVenta: cliente.fecha_venta || null
-    };
+function mostrarAplicacion(visible) {
+    const app = $("app");
+    if (app) app.style.display = visible ? "" : "none";
+    const login = $("login-supabase");
+    if (login) login.classList.toggle("oculto", visible);
+    const carga = $("pantalla-carga");
+    if (carga) carga.style.display = visible ? "none" : "flex";
 }
 
-function convertirInventarioDesdeDB(producto) {
-    return {
-        id: producto.id,
-
-        producto: producto.producto || "",
-        marca: producto.marca || "Sin marca",
-        talla: producto.talla || "S",
-        cantidad: Number(producto.cantidad) || 0,
-        precio: Number(producto.precio) || 0,
-        costo: Number(producto.costo) || 0
-    };
+function actualizarNombreNegocio() {
+    const nombre = tiendaActual?.nombre || "Mi negocio";
+    document.title = "MI CONTABILIDAD | " + nombre;
+    document.querySelectorAll("[data-nombre-tienda]").forEach(el => el.textContent = nombre);
+    document.querySelectorAll(".nombre-tienda, #nombre-tienda, #titulo-tienda").forEach(el => el.textContent = nombre);
 }
 
-/* =====================================================
-   LOGIN
-===================================================== */
-
-function mostrarLogin() {
-    let login = document.getElementById("login-supabase");
-
-    if (login) {
-        login.classList.remove("oculto");
-        return;
-    }
-
-    login = document.createElement("div");
-    login.id = "login-supabase";
-
-    login.innerHTML = `
-        <div class="login-caja">
-            <h1>🛍️ DONAY STORE</h1>
-
-            <div id="modo-login">
-                <p>Inicia sesión para entrar a tu tienda.</p>
-
-                <form id="form-login-supabase">
-                    <input
-                        id="login-email"
-                        type="email"
-                        placeholder="Correo electrónico"
-                        autocomplete="email"
-                        required
-                    >
-
-                    <input
-                        id="login-password"
-                        type="password"
-                        placeholder="Contraseña"
-                        autocomplete="current-password"
-                        required
-                    >
-
-                    <button type="submit">
-                        🔐 Iniciar sesión
-                    </button>
-                </form>
-
-                <button type="button" id="mostrar-registro" class="boton-secundario">
-                    🏪 Crear mi tienda
-                </button>
-            </div>
-
-            <div id="modo-registro" class="oculto-login">
-                <p>Crea tu cuenta y tu tienda en DONAY STORE.</p>
-
-                <form id="form-registro-supabase">
-                    <input
-                        id="registro-tienda"
-                        type="text"
-                        placeholder="Nombre de tu tienda"
-                        autocomplete="organization"
-                        required
-                    >
-
-                    <input
-                        id="registro-email"
-                        type="email"
-                        placeholder="Correo electrónico"
-                        autocomplete="email"
-                        required
-                    >
-
-                    <input
-                        id="registro-password"
-                        type="password"
-                        placeholder="Crea una contraseña"
-                        autocomplete="new-password"
-                        minlength="6"
-                        required
-                    >
-
-                    <button type="submit">
-                        🚀 Crear mi cuenta
-                    </button>
-                </form>
-
-                <button type="button" id="volver-login" class="boton-secundario">
-                    ← Ya tengo una cuenta
-                </button>
-            </div>
-
-            <p id="login-mensaje" class="login-mensaje"></p>
+function crearLogin() {
+    if ($("login-supabase")) return;
+    const box = document.createElement("div");
+    box.id = "login-supabase";
+    box.innerHTML = `
+      <div class="login-caja">
+        <div class="login-logo">📊</div>
+        <h1>MI CONTABILIDAD</h1>
+        <p>Administra tu negocio desde tu celular.</p>
+        <div id="modo-login">
+          <form id="form-login-supabase">
+            <input id="login-email" type="email" placeholder="Correo electrónico" autocomplete="email" required>
+            <input id="login-password" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+            <button type="submit">🔐 Iniciar sesión</button>
+          </form>
+          <button type="button" id="mostrar-registro" class="boton-secundario">🏪 Crear mi negocio</button>
         </div>
-    `;
-
-    document.body.appendChild(login);
-
-    const estilo = document.createElement("style");
-
-    estilo.textContent = `
-        #login-supabase {
-            position: fixed;
-            inset: 0;
-            z-index: 99999;
-            background: rgba(0,0,0,.96);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        #login-supabase.oculto {
-            display: none;
-        }
-
-        .login-caja {
-            width: min(420px, 100%);
-            max-height: 92vh;
-            overflow-y: auto;
-            background: #fff;
-            color: #111;
-            border-radius: 18px;
-            padding: 28px;
-            box-sizing: border-box;
-            box-shadow: 0 20px 60px rgba(0,0,0,.35);
-        }
-
-        .login-caja h1 {
-            margin: 0 0 10px;
-            text-align: center;
-        }
-
-        .login-caja p {
-            text-align: center;
-            margin: 8px 0 20px;
-        }
-
-        #form-login-supabase input,
-        #form-registro-supabase input {
-            width: 100%;
-            box-sizing: border-box;
-            margin: 7px 0;
-            padding: 14px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            font-size: 16px;
-        }
-
-        #form-login-supabase button,
-        #form-registro-supabase button {
-            width: 100%;
-            margin-top: 10px;
-            padding: 14px;
-            border: 0;
-            border-radius: 10px;
-            background: #111;
-            color: #fff;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .boton-secundario {
-            width: 100%;
-            margin-top: 10px;
-            padding: 12px;
-            border: 1px solid #111;
-            border-radius: 10px;
-            background: #fff;
-            color: #111;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .oculto-login {
-            display: none;
-        }
-
-        .login-mensaje {
-            min-height: 20px;
-            color: #c00;
-        }
-
-        #boton-cerrar-sesion {
-            position: fixed;
-            right: 14px;
-            bottom: 14px;
-            z-index: 1000;
-            border: 0;
-            border-radius: 999px;
-            padding: 10px 14px;
-            background: #111;
-            color: #fff;
-            font-weight: 700;
-            cursor: pointer;
-        }
-    `;
-
-    document.head.appendChild(estilo);
-
-    document
-        .getElementById("form-login-supabase")
-        .addEventListener("submit", iniciarSesion);
-
-    document
-        .getElementById("form-registro-supabase")
-        .addEventListener("submit", registrarTienda);
-
-    document
-        .getElementById("mostrar-registro")
-        .addEventListener("click", mostrarFormularioRegistro);
-
-    document
-        .getElementById("volver-login")
-        .addEventListener("click", mostrarFormularioLogin);
-
-    login.classList.remove("oculto");
+        <div id="modo-registro" class="oculto-login">
+          <form id="form-registro-supabase">
+            <input id="registro-tienda" type="text" placeholder="Nombre de tu negocio" autocomplete="organization" required>
+            <input id="registro-email" type="email" placeholder="Correo electrónico" autocomplete="email" required>
+            <input id="registro-password" type="password" placeholder="Crea una contraseña" minlength="6" autocomplete="new-password" required>
+            <select id="registro-tipo-negocio">
+              <option value="productos">Vendo productos</option>
+              <option value="servicios">Ofrezco servicios</option>
+              <option value="ambos">Productos y servicios</option>
+            </select>
+            <button type="submit">🚀 Crear mi cuenta</button>
+          </form>
+          <button type="button" id="volver-login" class="boton-secundario">← Ya tengo una cuenta</button>
+        </div>
+        <p id="login-mensaje" class="login-mensaje"></p>
+      </div>`;
+    document.body.appendChild(box);
+    $("mostrar-registro").onclick = () => { $("modo-login").classList.add("oculto-login"); $("modo-registro").classList.remove("oculto-login"); };
+    $("volver-login").onclick = () => { $("modo-registro").classList.add("oculto-login"); $("modo-login").classList.remove("oculto-login"); };
+    $("form-login-supabase").onsubmit = iniciarSesion;
+    $("form-registro-supabase").onsubmit = registrarCuenta;
 }
 
-function mostrarFormularioRegistro() {
-    document.getElementById("modo-login").style.display = "none";
-    document.getElementById("modo-registro").style.display = "block";
-    document.getElementById("login-mensaje").textContent = "";
+async function iniciarSesion(e) {
+    e.preventDefault();
+    const msg = $("login-mensaje");
+    msg.textContent = "Conectando...";
+    const {error} = await supabaseClient.auth.signInWithPassword({email: $("login-email").value.trim(), password: $("login-password").value});
+    if (error) { msg.textContent = "❌ " + error.message; return; }
+    msg.textContent = "Entrando...";
+    await cargarSistema();
 }
 
-function mostrarFormularioLogin() {
-    document.getElementById("modo-registro").style.display = "none";
-    document.getElementById("modo-login").style.display = "block";
-    document.getElementById("login-mensaje").textContent = "";
-}
-
-function ocultarLogin() {
-    const login = document.getElementById("login-supabase");
-
-    if (login) {
-        login.classList.add("oculto");
-    }
-}
-
-async function iniciarSesion(evento) {
-    evento.preventDefault();
-
-    const email =
-        document.getElementById("login-email").value.trim();
-
-    const password =
-        document.getElementById("login-password").value;
-
-    const mensaje =
-        document.getElementById("login-mensaje");
-
-    mensaje.textContent = "Entrando...";
-
-    const { error } =
-        await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-
-    if (error) {
-        mensaje.textContent =
-            "❌ " + error.message;
-        return;
-    }
-
-    await cargarDatosDelUsuario();
-
-    ocultarLogin();
-}
-
-async function registrarTienda(evento) {
-    evento.preventDefault();
-
-    const nombreTienda =
-        document.getElementById("registro-tienda").value.trim();
-
-    const email =
-        document.getElementById("registro-email").value.trim();
-
-    const password =
-        document.getElementById("registro-password").value;
-
-    const mensaje =
-        document.getElementById("login-mensaje");
-
-    if (!nombreTienda) {
-        mensaje.textContent = "❌ Escribe el nombre de tu tienda.";
-        return;
-    }
-
-    mensaje.textContent = "Creando tu tienda...";
-
-    const { data, error } =
-        await supabaseClient.auth.signUp({
-            email: email,
-            password: password,
-            options: {
-                data: {
-                    nombre_tienda: nombreTienda
-                }
-            }
-        });
-
-    if (error) {
-        mensaje.textContent =
-            "❌ " + error.message;
-        return;
-    }
-
-    if (!data.session) {
-        mensaje.textContent =
-            "✅ Cuenta creada. Revisa tu correo para confirmar la cuenta y luego inicia sesión.";
-        return;
-    }
-
-    await cargarDatosDelUsuario();
-
-    mensaje.textContent = "✅ ¡Tienda creada correctamente!";
-    ocultarLogin();
-}
-
-async function cerrarSesion() {
-    const confirmar =
-        confirm("¿Quieres cerrar sesión?");
-
-    if (!confirmar) return;
-
-    await supabaseClient.auth.signOut();
-
-    location.reload();
-}
-
-function crearBotonCerrarSesion() {
-    if (document.getElementById("boton-cerrar-sesion")) {
-        return;
-    }
-
-    const boton = document.createElement("button");
-
-    boton.id = "boton-cerrar-sesion";
-    boton.textContent = "🚪 Salir";
-    boton.onclick = cerrarSesion;
-
-    document.body.appendChild(boton);
-}
-
-/* =====================================================
-   CARGAR DATOS DEL USUARIO
-===================================================== */
-
-async function cargarDatosDelUsuario() {
-    const {
-        data: {
-            user
-        },
-        error: errorSesion
-    } = await supabaseClient.auth.getUser();
-
-    if (errorSesion || !user) {
-        mostrarLogin();
-        return false;
-    }
-
-    usuarioActual = user;
-
-    const {
-        data: perfil,
-        error: errorPerfil
-    } = await supabaseClient
-        .from("perfiles")
-        .select("tienda_id,nombre,rol")
-        .eq("id", user.id)
-        .single();
-
-    if (errorPerfil || !perfil) {
-        mostrarErrorSupabase(
-            errorPerfil,
-            "No encontramos el perfil de esta cuenta."
-        );
-        return false;
-    }
-
-    tiendaActual = perfil.tienda_id;
-
-    // Guardar y mostrar el nombre de la tienda.
-    // Cada cuenta usa solamente el nombre de SU propia tienda.
-    const nombreTiendaMetadata =
-        user.user_metadata?.nombre_tienda?.trim() || "";
-
-    if (nombreTiendaMetadata && perfil.rol === "dueño") {
-        const { error: errorNombreTienda } =
-            await supabaseClient
-                .from("tiendas")
-                .update({ nombre: nombreTiendaMetadata })
-                .eq("id", tiendaActual);
-
-        if (errorNombreTienda) {
-            console.warn(
-                "No se pudo guardar el nombre de la tienda:",
-                errorNombreTienda
-            );
-        }
-    }
-
-    const {
-        data: datosTienda,
-        error: errorTienda
-    } = await supabaseClient
-        .from("tiendas")
-        .select("nombre")
-        .eq("id", tiendaActual)
-        .single();
-
-    const nombreTienda =
-        nombreTiendaMetadata ||
-        (datosTienda && datosTienda.nombre) ||
-        "DONAY STORE";
-
-    if (errorTienda) {
-        console.warn(
-            "No se pudo leer el nombre de la tienda:",
-            errorTienda
-        );
-    }
-
-    actualizarNombreTiendaEnPantalla(nombreTienda);
-
-    await cargarClientesDesdeSupabase();
-    await cargarInventarioDesdeSupabase();
-
-    crearBotonCerrarSesion();
-
-    mostrarClientes();
-    mostrarVentas();
-    mostrarInventario();
-    actualizarInicio();
-
-    return true;
-}
-
-async function cargarClientesDesdeSupabase() {
-    const {
-        data,
-        error
-    } = await supabaseClient
-        .from("clientes")
-        .select("*")
-        .order("created_at", {
-            ascending: false
-        });
-
-    if (error) {
-        mostrarErrorSupabase(
-            error,
-            "No se pudieron cargar los clientes."
-        );
-        return;
-    }
-
-    clientes =
-        (data || []).map(convertirClienteDesdeDB);
-}
-
-async function cargarInventarioDesdeSupabase() {
-    const {
-        data,
-        error
-    } = await supabaseClient
-        .from("inventario")
-        .select("*")
-        .order("created_at", {
-            ascending: false
-        });
-
-    if (error) {
-        mostrarErrorSupabase(
-            error,
-            "No se pudo cargar el inventario."
-        );
-        return;
-    }
-
-    inventario =
-        (data || []).map(convertirInventarioDesdeDB);
-}
-
-/* =====================================================
-   NOMBRE DE LA TIENDA
-   Cada cuenta ve el nombre de su propia tienda.
-===================================================== */
-
-function actualizarNombreTiendaEnPantalla(nombre) {
-
-    const nombreLimpio =
-        String(nombre || "DONAY STORE").trim() ||
-        "DONAY STORE";
-
-    document.title =
-        nombreLimpio + " | Gestión de Clientes";
-
-    // Cambia el titulo principal de la tienda,
-    // pero no toca el formulario de inicio de sesión.
-    const candidatos =
-        Array.from(
-            document.querySelectorAll("h1, h2, [data-nombre-tienda]")
-        );
-
-    candidatos.forEach(function(elemento) {
-
-        if (
-            elemento.closest("#login-supabase") ||
-            elemento.closest("#modal-recibo")
-        ) {
-            return;
-        }
-
-        const texto =
-            elemento.textContent.trim().toUpperCase();
-
-        if (
-            texto === "DONAY STORE" ||
-            texto.includes("DONAY STORE")
-        ) {
-            elemento.textContent = nombreLimpio;
-        }
-
+async function registrarCuenta(e) {
+    e.preventDefault();
+    const nombre = $("registro-tienda").value.trim();
+    const email = $("registro-email").value.trim();
+    const password = $("registro-password").value;
+    const tipo = $("registro-tipo-negocio").value;
+    const msg = $("login-mensaje");
+    msg.textContent = "Creando tu negocio...";
+    const {data, error} = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {data: {nombre_tienda: nombre, tipo_negocio: tipo}, emailRedirectTo: APP_URL}
     });
-
+    if (error) { msg.textContent = "❌ " + error.message; return; }
+    if (data.session) {
+        await cargarSistema();
+    } else {
+        msg.textContent = "✅ Cuenta creada. Revisa tu correo para confirmar y luego inicia sesión.";
+    }
 }
 
-
-/* =====================================================
-   COMPATIBILIDAD LOCAL
-   Estas funciones ya no guardan la base de datos.
-   Supabase es ahora la fuente principal.
-===================================================== */
-
-function guardarClientes() {
-    return true;
-}
-
-function guardarInventario() {
-    return true;
-}
-
-/* =====================================================
-   FORMATO DE DINERO
-===================================================== */
-
-function dinero(valor) {
-
-    return Number(valor || 0).toLocaleString(
-        "es-CO"
-    );
-
-}
-
-/* =====================================================
-   CALCULAR GANANCIA
-===================================================== */
-
-function calcularGanancia(cliente) {
-
-    return (
-        Number(cliente.precio || 0) -
-        Number(cliente.costo || 0)
-    );
-
-}
-
-/* =====================================================
-   NAVEGACIÓN
-===================================================== */
-
-
-function mostrarSeccion(nombre, boton) {
-
-    const secciones =
-        document.querySelectorAll(".seccion");
-
-    secciones.forEach(function(seccion) {
-
-        seccion.classList.remove("activa");
-
-    });
-
-
-    const seccion =
-        document.getElementById(
-            "seccion-" + nombre
-        );
-
-
-    if (seccion) {
-
-        seccion.classList.add("activa");
-
-    }
-
-
-    const botones =
-        document.querySelectorAll(".nav-btn");
-
-    botones.forEach(function(btn) {
-
-        btn.classList.remove("activo");
-
-    });
-
-
-    if (boton) {
-
-        boton.classList.add("activo");
-
-    }
-
-
-    if (nombre === "inicio") {
-
-        actualizarInicio();
-
-    }
-
-
-    if (nombre === "ventas") {
-
-        mostrarVentas();
-
-    }
-
-
-    if (nombre === "inventario") {
-
-        mostrarInventario();
-
-    }
-
-
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
-
-}
-
-
-/* =====================================================
-   NAVEGAR DESDE BOTONES INTERNOS
-===================================================== */
-
-function mostrarSeccionPorNombre(nombre) {
-
-    const botones =
-        document.querySelectorAll(".nav-btn");
-
-    let botonEncontrado = null;
-
-
-    botones.forEach(function(boton) {
-
-        const texto =
-            boton.textContent.toLowerCase();
-
-        if (
-            (nombre === "clientes" &&
-             texto.includes("clientes")) ||
-
-            (nombre === "ventas" &&
-             texto.includes("ventas")) ||
-
-            (nombre === "inventario" &&
-             texto.includes("inventario")) ||
-
-            (nombre === "inicio" &&
-             texto.includes("inicio"))
-        ) {
-
-            botonEncontrado = boton;
-
-        }
-
-    });
-
-
-    mostrarSeccion(
-        nombre,
-        botonEncontrado
-    );
-
-}
-
-
-/* =====================================================
-   MOSTRAR CLIENTES
-===================================================== */
-
-function mostrarClientes(
-    clientesMostrar = clientes
-) {
-
-    lista.innerHTML = "";
-
-
-    const vendidos =
-        clientes.filter(function(cliente) {
-
-            return cliente.estado === "Vendido";
-
-        });
-
-
-    const pendientes =
-        clientes.filter(function(cliente) {
-
-            return cliente.estado !== "Vendido";
-
-        });
-
-
-    let totalVentas = 0;
-
-    let totalGanancia = 0;
-
-
-    vendidos.forEach(function(cliente) {
-
-        totalVentas +=
-            Number(cliente.precio) || 0;
-
-        totalGanancia +=
-            calcularGanancia(cliente);
-
-    });
-
-
-    contador.innerHTML =
-        clientes.length +
-        " clientes registrados | " +
-        vendidos.length +
-        " vendidos | " +
-        pendientes.length +
-        " pendientes | Ventas: $" +
-        dinero(totalVentas) +
-        " | Ganancia: $" +
-        dinero(totalGanancia);
-
-
-    if (clientesMostrar.length === 0) {
-
-        lista.innerHTML = `
-            <div class="cliente">
-                <h3>🔎 No encontramos resultados</h3>
-                <p>
-                    No hay clientes que coincidan con la búsqueda.
-                </p>
-            </div>
-        `;
-
-        return;
-
-    }
-
-
-    clientesMostrar.forEach(function(cliente) {
-
-        const indiceReal =
-            clientes.indexOf(cliente);
-
-
-        const div =
-            document.createElement("div");
-
-
-        div.className = "cliente";
-
-
-        const ganancia =
-            calcularGanancia(cliente);
-
-
-        const estadoTexto =
-            cliente.estado === "Vendido"
-                ? "🟢 Vendido"
-                : "🟡 Pendiente";
-
-
-        div.innerHTML = `
-
-            <h3>
-                👤 ${cliente.nombre}
-            </h3>
-
-            <p>
-
-                <strong>📱 WhatsApp:</strong>
-                ${cliente.whatsapp}
-                <br>
-
-                <strong>👕 Producto:</strong>
-                ${cliente.producto}
-                <br>
-
-                <strong>🏷️ Marca:</strong>
-                ${cliente.marca}
-                <br>
-
-                <strong>📂 Categoría:</strong>
-                ${cliente.categoria}
-                <br>
-
-                <strong>📏 Talla:</strong>
-                ${cliente.talla}
-                <br>
-
-                <strong>📅 Fecha:</strong>
-                ${cliente.fechaRegistro}
-                <br>
-
-                <strong>⏰ Hora:</strong>
-                ${cliente.horaRegistro}
-                <br>
-
-                <strong>📌 Estado:</strong>
-                ${estadoTexto}
-                <br>
-
-                <strong>💵 Precio:</strong>
-                $${dinero(cliente.precio)}
-                <br>
-
-                <strong>📦 Costo:</strong>
-                $${dinero(cliente.costo)}
-                <br>
-
-                <strong>💰 Ganancia:</strong>
-                $${dinero(ganancia)}
-
-            </p>
-
-
-            <button
-                class="boton-whatsapp"
-                onclick="abrirWhatsApp(${indiceReal})">
-
-                💬 WhatsApp
-
-            </button>
-
-
-            <button
-                class="boton-editar"
-                onclick="editarCliente(${indiceReal})">
-
-                ✏️ Editar
-
-            </button>
-
-
-            ${
-                cliente.estado !== "Vendido"
-
-                ?
-
-                `
-                <button
-                    class="boton-editar"
-                    onclick="marcarVendido(${indiceReal})">
-
-                    💰 Marcar vendido
-
-                </button>
-                `
-
-                :
-
-                `
-                <button
-                    class="boton-editar"
-                    onclick="mostrarRecibo(${indiceReal})">
-
-                    🧾 Recibo
-
-                </button>
-                `
-            }
-
-
-            <button
-                class="boton-eliminar"
-                onclick="eliminarCliente(${indiceReal})">
-
-                🗑️ Eliminar
-
-            </button>
-
-            <hr>
-
-        `;
-
-
-        lista.appendChild(div);
-
-    });
-
-}
-
-
-/* =====================================================
-   BUSCADOR
-===================================================== */
-
-function aplicarFiltros() {
-
-    const texto =
-        buscador.value
-            .toLowerCase()
-            .trim();
-
-
-    const estado =
-        filtroEstado.value;
-
-
-    const filtrados =
-        clientes.filter(function(cliente) {
-
-            const coincideTexto =
-
-                cliente.nombre
-                    .toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                cliente.whatsapp
-                    .toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                cliente.producto
-                    .toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                cliente.marca
-                    .toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                cliente.categoria
-                    .toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                cliente.estado
-                    .toLowerCase()
-                    .includes(texto);
-
-
-            const coincideEstado =
-
-                estado === "Todos"
-
-                ||
-
-                cliente.estado === estado;
-
-
-            return (
-                coincideTexto &&
-                coincideEstado
-            );
-
-        });
-
-
-    mostrarClientes(filtrados);
-
-}
-
-
-buscador.addEventListener(
-    "input",
-    aplicarFiltros
-);
-
-
-filtroEstado.addEventListener(
-    "change",
-    aplicarFiltros
-);
-
-
-/* =====================================================
-   REGISTRAR CLIENTE
-===================================================== */
-
-formulario.addEventListener(
-    "submit",
-    async function(evento) {
-
-        evento.preventDefault();
-
-        if (!supabaseClient || !tiendaActual) {
-            alert("Espera a que la tienda termine de cargar.");
-            return;
-        }
-
-        const ahora = new Date();
-
-        const cliente = {
-            tienda_id: tiendaActual,
-
-            nombre:
-                document.getElementById("nombre").value.trim(),
-
-            whatsapp:
-                document.getElementById("whatsapp").value.trim(),
-
-            producto:
-                document.getElementById("producto").value.trim(),
-
-            marca:
-                document.getElementById("marca").value,
-
-            categoria:
-                document.getElementById("categoria").value,
-
-            talla:
-                document.getElementById("talla").value,
-
-            fecha_registro:
-                ahora.toISOString(),
-
-            estado:
-                "pendiente",
-
-            precio:
-                Number(
-                    document.getElementById("precio").value
-                ) || 0,
-
-            costo:
-                Number(
-                    document.getElementById("costo").value
-                ) || 0
-        };
-
-        const {
-            data,
-            error
-        } = await supabaseClient
-            .from("clientes")
-            .insert(cliente)
-            .select()
-            .single();
-
-        if (error) {
-            mostrarErrorSupabase(
-                error,
-                "No se pudo registrar el cliente."
-            );
-            return;
-        }
-
-        clientes.unshift(
-            convertirClienteDesdeDB(data)
-        );
-
-        formulario.reset();
-
-        mostrarClientes();
-        actualizarInicio();
-
-        alert(
-            "✅ Cliente registrado correctamente"
-        );
-
-    }
-);
-
-
-/* =====================================================
-   EDITAR CLIENTE
-===================================================== */
-
-async function editarCliente(indice) {
-
-    const cliente = clientes[indice];
-
-    if (!cliente) {
-        return;
-    }
-
-    const nuevoNombre =
-        prompt(
-            "Nombre del cliente:",
-            cliente.nombre
-        );
-
-    if (nuevoNombre === null) return;
-
-    const nuevoWhatsapp =
-        prompt(
-            "WhatsApp:",
-            cliente.whatsapp
-        );
-
-    if (nuevoWhatsapp === null) return;
-
-    const nuevoProducto =
-        prompt(
-            "Producto:",
-            cliente.producto
-        );
-
-    if (nuevoProducto === null) return;
-
-    const nuevaMarca =
-        prompt(
-            "Marca:",
-            cliente.marca
-        );
-
-    if (nuevaMarca === null) return;
-
-    const nuevaCategoria =
-        prompt(
-            "Categoría:",
-            cliente.categoria
-        );
-
-    if (nuevaCategoria === null) return;
-
-    const nuevaTalla =
-        prompt(
-            "Talla (S, M, L o XL):",
-            cliente.talla
-        );
-
-    if (nuevaTalla === null) return;
-
-    const nuevoEstado =
-        prompt(
-            "Estado: Pendiente o Vendido",
-            cliente.estado
-        );
-
-    if (nuevoEstado === null) return;
-
-    const nuevoPrecio =
-        prompt(
-            "Precio de venta:",
-            cliente.precio
-        );
-
-    if (nuevoPrecio === null) return;
-
-    const nuevoCosto =
-        prompt(
-            "Costo del producto:",
-            cliente.costo
-        );
-
-    if (nuevoCosto === null) return;
-
-    const estadoNormalizado =
-        nuevoEstado.trim().toLowerCase() === "vendido"
-            ? "vendido"
-            : "pendiente";
-
-    const cambios = {
-        nombre: nuevoNombre.trim(),
-        whatsapp: nuevoWhatsapp.trim(),
-        producto: nuevoProducto.trim(),
-        marca: nuevaMarca.trim() || "Sin marca",
-        categoria: nuevaCategoria.trim() || "Otro",
-        talla: nuevaTalla.trim(),
-        estado: estadoNormalizado,
-        precio: Number(nuevoPrecio) || 0,
-        costo: Number(nuevoCosto) || 0
-    };
-
-    if (estadoNormalizado === "vendido" && !cliente.fechaVenta) {
-        cambios.fecha_venta = new Date().toISOString();
-    }
-
-    const {
-        data,
-        error
-    } = await supabaseClient
-        .from("clientes")
-        .update(cambios)
-        .eq("id", cliente.id)
-        .select()
-        .single();
-
-    if (error) {
-        mostrarErrorSupabase(
-            error,
-            "No se pudo actualizar el cliente."
-        );
-        return;
-    }
-
-    clientes[indice] =
-        convertirClienteDesdeDB(data);
-
-    mostrarClientes();
-    actualizarInicio();
-    mostrarVentas();
-}
-
-
-/* =====================================================
-   MARCAR VENDIDO
-===================================================== */
-
-async function marcarVendido(indice) {
-
-    const cliente = clientes[indice];
-
-    if (!cliente) {
-        return;
-    }
-
-    const confirmar =
-        confirm(
-            "¿Quieres marcar a " +
-            cliente.nombre +
-            " como VENDIDO?"
-        );
-
-    if (!confirmar) return;
-
-    const precio =
-        prompt(
-            "Precio de venta:",
-            cliente.precio || 0
-        );
-
-    if (precio === null) return;
-
-    const costo =
-        prompt(
-            "Costo del producto:",
-            cliente.costo || 0
-        );
-
-    if (costo === null) return;
-
-    const precioNumero =
-        Number(precio) || 0;
-
-    const costoNumero =
-        Number(costo) || 0;
-
-    const fechaVenta =
-        new Date().toISOString();
-
-    const {
-        data,
-        error
-    } = await supabaseClient
-        .from("clientes")
-        .update({
-            estado: "vendido",
-            precio: precioNumero,
-            costo: costoNumero,
-            fecha_venta: fechaVenta
-        })
-        .eq("id", cliente.id)
-        .select()
-        .single();
-
-    if (error) {
-        mostrarErrorSupabase(
-            error,
-            "No se pudo registrar la venta."
-        );
-        return;
-    }
-
-    clientes[indice] =
-        convertirClienteDesdeDB(data);
-
-    /* Guardamos también la venta en la tabla ventas */
-    const {
-        error: errorVenta
-    } = await supabaseClient
-        .from("ventas")
-        .insert({
-            tienda_id: tiendaActual,
-            cliente_id: cliente.id,
-            cliente_nombre: cliente.nombre,
-            whatsapp: cliente.whatsapp,
-            producto: cliente.producto,
-            marca: cliente.marca,
-            talla: cliente.talla,
-            precio: precioNumero,
-            costo: costoNumero,
-            ganancia:
-                precioNumero - costoNumero,
-            fecha_venta: fechaVenta
-        });
-
-    if (errorVenta) {
-        console.warn(
-            "El cliente se marcó vendido, pero la copia de la venta no pudo guardarse.",
-            errorVenta
-        );
-    }
-
-    mostrarClientes();
-    actualizarInicio();
-    mostrarVentas();
-
-    alert(
-        "✅ Venta registrada correctamente"
-    );
-}
-
-
-/* =====================================================
-   ELIMINAR CLIENTE
-===================================================== */
-
-async function eliminarCliente(indice) {
-
-    const cliente = clientes[indice];
-
-    if (!cliente) {
-        return;
-    }
-
-    const confirmar =
-        confirm(
-            "¿Quieres eliminar a " +
-            cliente.nombre +
-            "?"
-        );
-
-    if (!confirmar) return;
-
-    /* Primero quitamos las ventas relacionadas */
-    await supabaseClient
-        .from("ventas")
-        .delete()
-        .eq("cliente_id", cliente.id);
-
-    const {
-        error
-    } = await supabaseClient
-        .from("clientes")
-        .delete()
-        .eq("id", cliente.id);
-
-    if (error) {
-        mostrarErrorSupabase(
-            error,
-            "No se pudo eliminar el cliente."
-        );
-        return;
-    }
-
-    clientes.splice(indice, 1);
-
-    mostrarClientes();
-    actualizarInicio();
-    mostrarVentas();
-}
-
-
-/* =====================================================
-   WHATSAPP
-===================================================== */
-
-function abrirWhatsApp(indice) {
-
-    const cliente =
-        clientes[indice];
-
-
-    if (!cliente) {
-        return;
-    }
-
-
-    let numero =
-        String(
-            cliente.whatsapp
-        ).replace(/\D/g, "");
-
-
-    if (
-        numero.length === 10 &&
-        numero.startsWith("3")
-    ) {
-
-        numero =
-            "57" + numero;
-
-    }
-
-
-    window.open(
-        "https://wa.me/" + numero,
-        "_blank"
-    );
-
-}
-
-
-/* =====================================================
-   ESTADÍSTICAS DEL INICIO
-===================================================== */
-
-function actualizarInicio() {
-
-    const clientesElemento =
-        document.getElementById(
-            "inicio-clientes"
-        );
-
-
-    const ventasElemento =
-        document.getElementById(
-            "inicio-ventas"
-        );
-
-
-    const productosElemento =
-        document.getElementById(
-            "inicio-productos"
-        );
-
-
-    const gananciaElemento =
-        document.getElementById(
-            "inicio-ganancia"
-        );
-
-
-    if (!clientesElemento) {
-        return;
-    }
-
-
-    const vendidos =
-        clientes.filter(function(cliente) {
-
-            return cliente.estado === "Vendido";
-
-        });
-
-
-    let dineroVendido = 0;
-
-    let ganancia = 0;
-
-
-    vendidos.forEach(function(cliente) {
-
-        dineroVendido +=
-            Number(cliente.precio) || 0;
-
-
-        ganancia +=
-            calcularGanancia(cliente);
-
-    });
-
-
-    clientesElemento.textContent =
-        clientes.length;
-
-
-    ventasElemento.textContent =
-        vendidos.length;
-
-
-    productosElemento.textContent =
-        inventario.length;
-
-
-    gananciaElemento.textContent =
-        "$" + dinero(ganancia);
-
-}
-
-
-/* =====================================================
-   VENTAS
-===================================================== */
-
-function mostrarVentas() {
-
-    const listaVentas =
-        document.getElementById(
-            "lista-ventas"
-        );
-
-
-    if (!listaVentas) {
-        return;
-    }
-
-
-    listaVentas.innerHTML = "";
-
-
-    const ventas =
-        clientes.filter(function(cliente) {
-
-            return cliente.estado === "Vendido";
-
-        });
-
-
-    let totalDinero = 0;
-
-    let totalGanancia = 0;
-
-
-    ventas.forEach(function(cliente) {
-
-        totalDinero +=
-            Number(cliente.precio) || 0;
-
-
-        totalGanancia +=
-            calcularGanancia(cliente);
-
-    });
-
-
-    document.getElementById(
-        "total-ventas"
-    ).textContent =
-        ventas.length;
-
-
-    document.getElementById(
-        "dinero-ventas"
-    ).textContent =
-        "$" + dinero(totalDinero);
-
-
-    document.getElementById(
-        "ganancia-ventas"
-    ).textContent =
-        "$" + dinero(totalGanancia);
-
-
-    if (ventas.length === 0) {
-
-        listaVentas.innerHTML = `
-
-            <div class="cliente">
-
-                <h3>
-                    💰 Todavía no hay ventas
-                </h3>
-
-                <p>
-                    Cuando marques un cliente como vendido,
-                    aparecerá aquí.
-                </p>
-
-            </div>
-
-        `;
-
-        return;
-
-    }
-
-
-    ventas.forEach(function(cliente) {
-
-        const indice =
-            clientes.indexOf(cliente);
-
-
-        const div =
-            document.createElement("div");
-
-
-        div.className =
-            "cliente";
-
-
-        div.innerHTML = `
-
-            <h3>
-                💰 ${cliente.producto}
-            </h3>
-
-            <p>
-
-                <strong>Cliente:</strong>
-                ${cliente.nombre}
-                <br>
-
-                <strong>Marca:</strong>
-                ${cliente.marca}
-                <br>
-
-                <strong>Fecha:</strong>
-                ${cliente.fechaRegistro}
-                <br>
-
-                <strong>Venta:</strong>
-                $${dinero(cliente.precio)}
-                <br>
-
-                <strong>Costo:</strong>
-                $${dinero(cliente.costo)}
-                <br>
-
-                <strong>Ganancia:</strong>
-                $${dinero(
-                    calcularGanancia(cliente)
-                )}
-
-            </p>
-
-
-            <button
-                class="boton-editar"
-                onclick="mostrarRecibo(${indice})">
-
-                🧾 Ver recibo
-
-            </button>
-
-        `;
-
-
-        listaVentas.appendChild(div);
-
-    });
-
-}
-
-
-/* =====================================================
-   INVENTARIO
-===================================================== */
-
-async function agregarProductoInventario() {
-
-    if (!supabaseClient || !tiendaActual) {
-        alert("Espera a que la tienda termine de cargar.");
-        return;
-    }
-
-    const producto =
-        document.getElementById(
-            "inventario-producto"
-        ).value.trim();
-
-    const marca =
-        document.getElementById(
-            "inventario-marca"
-        ).value;
-
-    const talla =
-        document.getElementById(
-            "inventario-talla"
-        ).value;
-
-    const cantidad =
-        Number(
-            document.getElementById(
-                "inventario-cantidad"
-            ).value
-        ) || 0;
-
-    const precio =
-        Number(
-            document.getElementById(
-                "inventario-precio"
-            ).value
-        ) || 0;
-
-    const costo =
-        Number(
-            document.getElementById(
-                "inventario-costo"
-            ).value
-        ) || 0;
-
-    if (!producto) {
-        alert(
-            "Escribe el nombre del producto."
-        );
-        return;
-    }
-
-    if (cantidad <= 0) {
-        alert(
-            "La cantidad debe ser mayor que 0."
-        );
-        return;
-    }
-
-    const nuevoProducto = {
-        tienda_id: tiendaActual,
-        producto: producto,
-        marca: marca,
-        talla: talla,
-        cantidad: cantidad,
-        precio: precio,
-        costo: costo
-    };
-
-    const {
-        data,
-        error
-    } = await supabaseClient
-        .from("inventario")
-        .insert(nuevoProducto)
-        .select()
-        .single();
-
-    if (error) {
-        mostrarErrorSupabase(
-            error,
-            "No se pudo agregar el producto al inventario."
-        );
-        return;
-    }
-
-    inventario.unshift(
-        convertirInventarioDesdeDB(data)
-    );
-
-    document.getElementById(
-        "inventario-producto"
-    ).value = "";
-
-    document.getElementById(
-        "inventario-cantidad"
-    ).value = "1";
-
-    document.getElementById(
-        "inventario-precio"
-    ).value = "";
-
-    document.getElementById(
-        "inventario-costo"
-    ).value = "";
-
-    mostrarInventario();
-    actualizarInicio();
-
-    alert(
-        "✅ Producto agregado al inventario."
-    );
-}
-
-/* =====================================================
-   MOSTRAR INVENTARIO
-===================================================== */
-
-
-/* =====================================================
-   MOSTRAR INVENTARIO
-===================================================== */
-
-function mostrarInventario() {
-
-    const listaInventario =
-        document.getElementById(
-            "lista-inventario"
-        );
-
-
-    if (!listaInventario) {
-        return;
-    }
-
-
-    listaInventario.innerHTML = "";
-
-
-    if (inventario.length === 0) {
-
-        listaInventario.innerHTML = `
-
-            <div class="cliente">
-
-                <h3>
-                    📦 Inventario vacío
-                </h3>
-
-                <p>
-                    Agrega tus productos usando el formulario.
-                </p>
-
-            </div>
-
-        `;
-
-        return;
-
-    }
-
-
-    inventario.forEach(function(
-        producto,
-        indice
-    ) {
-
-        const div =
-            document.createElement("div");
-
-
-        div.className =
-            "producto-inventario";
-
-
-        div.innerHTML = `
-
-            <div class="producto-info">
-
-                <h3>
-                    ${producto.producto}
-                </h3>
-
-                <p>
-                    🏷️ Marca:
-                    ${producto.marca}
-                </p>
-
-                <p>
-                    📏 Talla:
-                    ${producto.talla}
-                </p>
-
-                <p>
-                    💵 Precio:
-                    $${dinero(producto.precio)}
-                </p>
-
-                <p>
-                    📦 Costo:
-                    $${dinero(producto.costo)}
-                </p>
-
-            </div>
-
-
-            <div>
-
-                <div class="producto-cantidad">
-
-                    ${producto.cantidad}
-                    unidades
-
-                </div>
-
-
-                <button
-                    class="boton-eliminar"
-                    onclick="eliminarProductoInventario(${indice})">
-
-                    🗑️ Eliminar
-
-                </button>
-
-            </div>
-
-        `;
-
-
-        listaInventario.appendChild(div);
-
-    });
-
-}
-
-
-/* =====================================================
-   ELIMINAR PRODUCTO INVENTARIO
-===================================================== */
-
-async function eliminarProductoInventario(indice) {
-
-    const producto = inventario[indice];
-
-    if (!producto) {
-        return;
-    }
-
-    const confirmar =
-        confirm(
-            "¿Eliminar " +
-            producto.producto +
-            " del inventario?"
-        );
-
-    if (!confirmar) return;
-
-    const {
-        error
-    } = await supabaseClient
-        .from("inventario")
-        .delete()
-        .eq("id", producto.id);
-
-    if (error) {
-        mostrarErrorSupabase(
-            error,
-            "No se pudo eliminar el producto."
-        );
-        return;
-    }
-
-    inventario.splice(indice, 1);
-
-    mostrarInventario();
-    actualizarInicio();
-}
-
-
-/* =====================================================
-   SELECCIONAR MARCA
-===================================================== */
-
-function seleccionarMarca(marca) {
-
-    mostrarSeccionPorNombre(
-        "clientes"
-    );
-
-
-    const campo =
-        document.getElementById(
-            "marca"
-        );
-
-
-    if (!campo) {
-        return;
-    }
-
-
-    const opciones =
-        Array.from(
-            campo.options
-        );
-
-
-    const existe =
-        opciones.some(function(
-            opcion
-        ) {
-
-            return opcion.value === marca;
-
-        });
-
-
-    if (existe) {
-
-        campo.value = marca;
-
-    }
-
-}
-
-
-/* =====================================================
-   SELECCIONAR CATEGORÍA
-===================================================== */
-
-function seleccionarCategoria(
-    categoria
-) {
-
-    mostrarSeccionPorNombre(
-        "clientes"
-    );
-
-
-    const campo =
-        document.getElementById(
-            "categoria"
-        );
-
-
-    if (!campo) {
-        return;
-    }
-
-
-    const opciones =
-        Array.from(
-            campo.options
-        );
-
-
-    const existe =
-        opciones.some(function(
-            opcion
-        ) {
-
-            return opcion.value === categoria;
-
-        });
-
-
-    if (existe) {
-
-        campo.value = categoria;
-
-    }
-
-}
-
-
-/* =====================================================
-   RECIBO
-===================================================== */
-
-function mostrarRecibo(indice) {
-
-    const cliente =
-        clientes[indice];
-
-
-    if (!cliente) {
-        return;
-    }
-
-
-    const contenido =
-        document.getElementById(
-            "contenido-recibo"
-        );
-
-
-    const ganancia =
-        calcularGanancia(cliente);
-
-
-    contenido.innerHTML = `
-
-        <h2>
-            🧾 ${
-                document.title.replace(" | Gestión de Clientes", "") ||
-                "DONAY STORE"
-            }
-        </h2>
-
-        <p>
-            <strong>Recibo de venta</strong>
-        </p>
-
-        <hr>
-
-        <p>
-
-            <strong>Cliente:</strong>
-            ${cliente.nombre}
-            <br>
-
-            <strong>WhatsApp:</strong>
-            ${cliente.whatsapp}
-            <br>
-
-            <strong>Producto:</strong>
-            ${cliente.producto}
-            <br>
-
-            <strong>Marca:</strong>
-            ${cliente.marca}
-            <br>
-
-            <strong>Talla:</strong>
-            ${cliente.talla}
-            <br>
-
-            <strong>Fecha:</strong>
-            ${cliente.fechaRegistro}
-            <br>
-
-            <strong>Hora:</strong>
-            ${cliente.horaRegistro}
-
-        </p>
-
-        <hr>
-
-        <p>
-
-            <strong>Precio:</strong>
-            $${dinero(cliente.precio)}
-            <br>
-
-            <strong>Ganancia:</strong>
-            $${dinero(ganancia)}
-
-        </p>
-
-        <hr>
-
-        <p>
-            Gracias por tu compra 🛍️
-        </p>
-
-    `;
-
-
-    const modal =
-        document.getElementById(
-            "modal-recibo"
-        );
-
-
-    modal.classList.add(
-        "activo"
-    );
-
-}
-
-
-/* =====================================================
-   CERRAR RECIBO
-===================================================== */
-
-function cerrarRecibo() {
-
-    const modal =
-        document.getElementById(
-            "modal-recibo"
-        );
-
-
-    modal.classList.remove(
-        "activo"
-    );
-
-}
-
-
-/* =====================================================
-   IMPRIMIR RECIBO
-===================================================== */
-
-function imprimirRecibo() {
-
-    const contenido =
-        document.getElementById(
-            "contenido-recibo"
-        ).innerHTML;
-
-
-    const ventana =
-        window.open(
-            "",
-            "_blank"
-        );
-
-
-    ventana.document.write(`
-
-        <html>
-
-        <head>
-
-            <title>
-                Recibo ${
-                    document.title.replace(" | Gestión de Clientes", "") ||
-                    "DONAY STORE"
-                }
-            </title>
-
-            <style>
-
-                body {
-                    font-family: Arial;
-                    padding: 30px;
-                    max-width: 500px;
-                    margin: auto;
-                }
-
-                h2 {
-                    text-align: center;
-                }
-
-                hr {
-                    border: 0;
-                    border-top: 1px solid #ccc;
-                }
-
-                p {
-                    line-height: 1.8;
-                }
-
-            </style>
-
-        </head>
-
-        <body>
-
-            ${contenido}
-
-        </body>
-
-        </html>
-
-    `);
-
-
-    ventana.document.close();
-
-
-    ventana.focus();
-
-
-    ventana.print();
-
-}
-
-
-/* =====================================================
-   EXPORTAR CLIENTES A CSV
-===================================================== */
-
-function exportarCSV() {
-
-    if (clientes.length === 0) {
-
-        alert(
-            "No hay clientes para exportar."
-        );
-
-        return;
-
-    }
-
-
-    let csv =
-        "Nombre,WhatsApp,Producto,Marca,Categoria,Talla,Estado,Precio,Costo,Ganancia,Fecha,Hora\n";
-
-
-    clientes.forEach(function(cliente) {
-
-        const fila = [
-
-            cliente.nombre,
-
-            cliente.whatsapp,
-
-            cliente.producto,
-
-            cliente.marca,
-
-            cliente.categoria,
-
-            cliente.talla,
-
-            cliente.estado,
-
-            cliente.precio,
-
-            cliente.costo,
-
-            calcularGanancia(cliente),
-
-            cliente.fechaRegistro,
-
-            cliente.horaRegistro
-
-        ];
-
-
-        csv +=
-
-            fila.map(function(valor) {
-
-                return '"' +
-                    String(valor)
-                        .replace(/"/g, '""') +
-                    '"';
-
-            }).join(",") +
-
-            "\n";
-
-    });
-
-
-    const archivo =
-        new Blob(
-            [csv],
-            {
-                type:
-                    "text/csv;charset=utf-8;"
-            }
-        );
-
-
-    const url =
-        URL.createObjectURL(
-            archivo
-        );
-
-
-    const enlace =
-        document.createElement("a");
-
-
-    enlace.href = url;
-
-
-    enlace.download =
-        "clientes-donay-store.csv";
-
-
-    document.body.appendChild(
-        enlace
-    );
-
-
-    enlace.click();
-
-
-    document.body.removeChild(
-        enlace
-    );
-
-
-    URL.revokeObjectURL(
-        url
-    );
-
-}
-
-
-/* =====================================================
-   CERRAR MODAL AL TOCAR AFUERA
-===================================================== */
-
-const modalRecibo =
-    document.getElementById(
-        "modal-recibo"
-    );
-
-
-if (modalRecibo) {
-
-    modalRecibo.addEventListener(
-        "click",
-        function(evento) {
-
-            if (
-                evento.target ===
-                modalRecibo
-            ) {
-
-                cerrarRecibo();
-
-            }
-
-        }
-    );
-
-}
-
-
-/* =====================================================
-   INICIAR SISTEMA CON SUPABASE
-===================================================== */
-
-async function iniciarSistemaSupabase() {
-
+async function cargarSistema() {
+    const {data:{session}} = await supabaseClient.auth.getSession();
+    if (!session) { crearLogin(); mostrarAplicacion(false); return; }
+    usuarioActual = session.user;
     try {
-
-        await cargarLibreriaSupabase();
-
-        supabaseClient =
-            window.supabase.createClient(
-                SUPABASE_URL,
-                SUPABASE_PUBLISHABLE_KEY
-            );
-
-        const {
-            data: {
-                session
-            }
-        } = await supabaseClient.auth.getSession();
-
-        if (!session) {
-            cargandoSistema = false;
-            mostrarLogin();
-            return;
-        }
-
-        await cargarDatosDelUsuario();
-
-        cargandoSistema = false;
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "❌ No se pudo conectar con Supabase.\n\n" +
-            "Revisa tu conexión a internet."
-        );
-
+        await cargarTienda();
+        await cargarTodo();
+        actualizarNombreNegocio();
+        mostrarAplicacion(true);
+        configurarEventos();
+        mostrarSeccion("inicio");
+        renderTodo();
+    } catch (e) {
+        errorUI(e, "No se pudieron cargar los datos de tu negocio.");
     }
 }
 
-iniciarSistemaSupabase();
+async function cargarTienda() {
+    const {data: perfil, error: pe} = await supabaseClient.from("perfiles").select("tienda_id, nombre, rol").eq("id", usuarioActual.id).maybeSingle();
+    if (pe) throw pe;
+    if (!perfil?.tienda_id) throw new Error("Tu cuenta todavía no tiene un negocio asociado.");
+    const {data: tienda, error: te} = await supabaseClient.from("tiendas").select("*").eq("id", perfil.tienda_id).single();
+    if (te) throw te;
+    tiendaActual = tienda;
+}
 
+async function cargarTodo() {
+    const [p,g,c,v,cc,pp] = await Promise.all([
+        supabaseClient.from("productos_servicios").select("*").order("created_at", {ascending:false}),
+        supabaseClient.from("gastos").select("*").order("fecha_gasto", {ascending:false}),
+        supabaseClient.from("clientes").select("*").order("created_at", {ascending:false}),
+        supabaseClient.from("ventas").select("*").order("fecha_venta", {ascending:false}),
+        supabaseClient.from("cuentas_por_cobrar").select("*").order("fecha", {ascending:false}),
+        supabaseClient.from("pagos_cuentas").select("*").order("fecha_pago", {ascending:false})
+    ]);
+    if (p.error) throw p.error; if (g.error) throw g.error; if (c.error) throw c.error; if (v.error) throw v.error; if (cc.error) throw cc.error; if (pp.error) throw pp.error;
+    productosServicios = p.data || []; gastos = g.data || []; clientes = c.data || []; ventas = v.data || []; cuentas = cc.data || []; pagos = pp.data || [];
+}
+
+function rangoPeriodo() {
+    const hoy = new Date(); hoy.setHours(23,59,59,999);
+    if (periodoActual === "hoy") { const d = new Date(); d.setHours(0,0,0,0); return [d, hoy]; }
+    if (periodoActual === "semana") { const d = new Date(); const day = d.getDay() || 7; d.setDate(d.getDate() - day + 1); d.setHours(0,0,0,0); return [d,hoy]; }
+    if (periodoActual === "mes") { const d = new Date(hoy.getFullYear(), hoy.getMonth(), 1); return [d,hoy]; }
+    return [new Date(2000,0,1), hoy];
+}
+
+function enPeriodo(fecha) { const [ini,fin] = rangoPeriodo(); const d = new Date(fecha); return d >= ini && d <= fin; }
+function ventasPeriodo() { return ventas.filter(v => enPeriodo(v.fecha_venta)); }
+function gastosPeriodo() { return gastos.filter(g => enPeriodo(g.fecha_gasto)); }
+function totalVentas() { return ventasPeriodo().reduce((s,v)=>s+num(v.precio)*Math.max(1,num(v.cantidad)||1),0); }
+function totalCostos() { return ventasPeriodo().reduce((s,v)=>s+num(v.costo)*Math.max(1,num(v.cantidad)||1),0); }
+function totalGastos() { return gastosPeriodo().reduce((s,g)=>s+num(g.monto),0); }
+function gananciaBruta() { return totalVentas()-totalCostos(); }
+function gananciaNeta() { return gananciaBruta()-totalGastos(); }
+function inventarioInvertido() { return productosServicios.filter(p=>p.tipo==="producto"&&p.activo!==false).reduce((s,p)=>s+num(p.stock)*num(p.costo),0); }
+function valorInventarioVenta() { return productosServicios.filter(p=>p.tipo==="producto"&&p.activo!==false).reduce((s,p)=>s+num(p.stock)*num(p.precio),0); }
+function utilidadPotencial() { return valorInventarioVenta()-inventarioInvertido(); }
+function cuentasPendientes() { return cuentas.filter(c=>c.estado!=="paid").reduce((s,c)=>s+Math.max(0,num(c.monto_total)-num(c.monto_pagado)),0); }
+
+function renderTodo() {
+    renderInicio(); renderProductos(); renderVentas(); renderGastos(); renderClientes(); renderFinanzas(); renderReportes(); renderNegocio();
+}
+
+function poner(id, html) { if ($(id)) $(id).innerHTML = html; }
+
+function renderInicio() {
+    ponerTexto(["total-ventas","inicio-ventas","resumen-ventas"], dinero(totalVentas()));
+    ponerTexto(["dinero-ventas","inicio-ingresos"], dinero(totalVentas()));
+    ponerTexto(["ganancia-ventas","inicio-ganancia"], dinero(gananciaNeta()));
+    ponerTexto(["inicio-costos"], dinero(totalCostos()));
+    ponerTexto(["inicio-gastos"], dinero(totalGastos()));
+    ponerTexto(["inicio-inventario"], dinero(inventarioInvertido()));
+    ponerTexto(["inicio-por-cobrar"], dinero(cuentasPendientes()));
+    ponerTexto(["contador-clientes"], String(clientes.length));
+    ponerTexto(["contador-productos"], String(productosServicios.filter(p=>p.tipo==="producto").length));
+    ponerTexto(["contador-servicios"], String(productosServicios.filter(p=>p.tipo==="servicio").length));
+    const rec = ventasPeriodo().slice(0,5);
+    poner("lista-ventas-inicio", rec.length ? rec.map(v=>`<div class="fila-lista"><b>${esc(v.producto || "Venta")}</b><span>${dinero(num(v.precio)*Math.max(1,num(v.cantidad)||1))}</span></div>`).join("") : `<div class="vacio">Aún no hay ventas en este periodo.</div>`);
+}
+
+function renderProductos() {
+    const lista = productosServicios;
+    const html = lista.length ? lista.map(p => {
+        const stock = num(p.stock), costo = num(p.costo), precio = num(p.precio);
+        const potencial = (precio-costo)*stock;
+        return `<div class="tarjeta-item">
+          <div><strong>${esc(p.nombre)}</strong><small>${esc(p.tipo)}${p.categoria?" · "+esc(p.categoria):""}</small></div>
+          <div><span>Stock: <b>${stock}</b></span><span>Costo: ${dinero(costo)}</span><span>Venta: ${dinero(precio)}</span><span>Ganancia: <b>${dinero(precio-costo)}</b></span></div>
+          <button class="boton-peligro boton-eliminar-producto" data-id="${p.id}">Eliminar</button>
+        </div>`;
+    }).join("") : `<div class="vacio">No tienes productos ni servicios registrados.</div>`;
+    poner("lista-productos-servicios", html);
+    poner("lista-inventario", html);
+}
+
+function renderVentas() {
+    const html = ventas.length ? ventas.map(v=>`<div class="tarjeta-item"><div><strong>${esc(v.producto||"Venta")}</strong><small>${fechaTexto(v.fecha_venta)} · ${esc(v.metodo_pago||"Pago")}</small></div><div><span>Cantidad: ${num(v.cantidad)||1}</span><span>Venta: ${dinero(num(v.precio)*(num(v.cantidad)||1))}</span><span>Ganancia: <b>${dinero((num(v.precio)-num(v.costo))*(num(v.cantidad)||1))}</b></span></div></div>`).join("") : `<div class="vacio">No hay ventas registradas.</div>`;
+    poner("lista-ventas", html);
+    poner("lista-ventas-finanzas", html);
+}
+
+function renderGastos() {
+    poner("lista-gastos", gastos.length ? gastos.map(g=>`<div class="tarjeta-item"><div><strong>${esc(g.descripcion)}</strong><small>${esc(g.categoria||"Sin categoría")} · ${fechaTexto(g.fecha_gasto)}</small></div><div><b>${dinero(g.monto)}</b><button class="boton-peligro boton-eliminar-gasto" data-id="${g.id}">Eliminar</button></div></div>`).join("") : `<div class="vacio">No hay gastos registrados.</div>`);
+}
+
+function renderClientes() {
+    const q = ($("buscador")?.value || "").toLowerCase();
+    const estado = $("filtro-estado")?.value || "todos";
+    const filtrados = clientes.filter(c => (!q || [c.nombre,c.whatsapp,c.producto].join(" ").toLowerCase().includes(q)) && (estado==="todos" || c.estado===estado));
+    poner("lista-clientes", filtrados.length ? filtrados.map(c=>`<div class="tarjeta-item"><div><strong>${esc(c.nombre)}</strong><small>${esc(c.whatsapp||"")} · ${esc(c.producto||"")}</small></div><div><span>${esc(c.estado||"pendiente")}</span><span>${dinero(c.precio)}</span><span>Ganancia: ${dinero(num(c.precio)-num(c.costo))}</span></div></div>`).join("") : `<div class="vacio">No se encontraron clientes.</div>`);
+}
+
+function renderFinanzas() {
+    ponerTexto(["fin-ventas","fin-ingresos"], dinero(totalVentas()));
+    ponerTexto(["fin-costos"], dinero(totalCostos()));
+    ponerTexto(["fin-gastos"], dinero(totalGastos()));
+    ponerTexto(["fin-bruta"], dinero(gananciaBruta()));
+    ponerTexto(["fin-neta"], dinero(gananciaNeta()));
+    ponerTexto(["fin-inventario"], dinero(inventarioInvertido()));
+    ponerTexto(["fin-potencial"], dinero(utilidadPotencial()));
+    ponerTexto(["fin-cobrar"], dinero(cuentasPendientes()));
+    const margen = totalVentas() ? (gananciaBruta()/totalVentas()*100) : 0;
+    ponerTexto(["fin-margen"], margen.toFixed(1)+"%");
+}
+
+function renderReportes() {
+    const margen = totalVentas() ? gananciaBruta()/totalVentas()*100 : 0;
+    poner("reporte-resumen", `<div class="reporte-grid"><div><span>Ventas</span><b>${dinero(totalVentas())}</b></div><div><span>Costos</span><b>${dinero(totalCostos())}</b></div><div><span>Gastos</span><b>${dinero(totalGastos())}</b></div><div><span>Ganancia neta</span><b>${dinero(gananciaNeta())}</b></div><div><span>Margen bruto</span><b>${margen.toFixed(1)}%</b></div><div><span>Por cobrar</span><b>${dinero(cuentasPendientes())}</b></div></div>`);
+}
+
+function renderNegocio() {
+    ponerTexto(["config-nombre-tienda","negocio-nombre"], tiendaActual?.nombre || "");
+    if ($("config-tipo-negocio")) $("config-tipo-negocio").value = tiendaActual?.tipo_negocio || "productos";
+    if ($("config-moneda")) $("config-moneda").value = tiendaActual?.moneda || "COP";
+}
+
+function mostrarSeccion(nombre) {
+    document.querySelectorAll(".seccion").forEach(s=>s.classList.remove("activa"));
+    const sec = $("seccion-"+nombre) || $(nombre);
+    if (sec) sec.classList.add("activa");
+    document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("activo", b.dataset.seccion===nombre || b.dataset.target===nombre));
+    window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function configurarNavegacion() {
+    document.querySelectorAll(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>mostrarSeccion(btn.dataset.seccion || btn.dataset.target || btn.getAttribute("data-section"))));
+}
+
+function configurarEventos() {
+    if (window.__miContabilidadEventos) return;
+    window.__miContabilidadEventos = true;
+    configurarNavegacion();
+    ["buscador","filtro-estado"].forEach(id=>$(id)?.addEventListener("input",renderClientes));
+    document.addEventListener("click", manejarClick);
+    document.addEventListener("submit", manejarSubmit);
+    document.addEventListener("change", e=>{
+        if (e.target.matches("[data-periodo], #periodo-finanzas, #periodo-reporte")) { periodoActual=e.target.value; renderTodo(); }
+    });
+}
+
+async function manejarSubmit(e) {
+    if (!e.target.matches("form")) return;
+    const id = e.target.id;
+    if (!id) return;
+    if (["form-producto-servicio","form-producto","form-servicio"].includes(id)) { e.preventDefault(); await guardarProductoServicio(e.target); }
+    else if (["form-gasto","formulario-gasto"].includes(id)) { e.preventDefault(); await guardarGasto(e.target); }
+    else if (["form-venta","formulario-venta"].includes(id)) { e.preventDefault(); await guardarVenta(e.target); }
+    else if (["form-cliente","formulario-clientes"].includes(id)) { e.preventDefault(); await guardarCliente(e.target); }
+    else if (["form-negocio","form-config-negocio"].includes(id)) { e.preventDefault(); await guardarNegocio(e.target); }
+    else if (["form-cuenta","form-cobro"].includes(id)) { e.preventDefault(); await guardarCuenta(e.target); }
+}
+
+function valorForm(form, nombres, defecto="") { for (const n of nombres) { const el=form.querySelector(`[name="${n}"]`) || $(n); if (el) return el.value; } return defecto; }
+
+async function guardarProductoServicio(form) {
+    const tipo = valorForm(form,["tipo","producto_tipo"],"producto");
+    const data = {tienda_id:tiendaActual.id,tipo,nombre:valorForm(form,["nombre","producto","nombre_producto"]),categoria:valorForm(form,["categoria"]),descripcion:valorForm(form,["descripcion"]),unidad:valorForm(form,["unidad"],"unidad"),stock:num(valorForm(form,["stock","cantidad"])),costo:num(valorForm(form,["costo"])),precio:num(valorForm(form,["precio","precio_venta"])),activo:true};
+    if (!data.nombre) return alert("Escribe el nombre.");
+    const {error}=await supabaseClient.from("productos_servicios").insert(data); if(error)return errorUI(error,"No se pudo guardar.");
+    form.reset(); await cargarTodo(); renderTodo(); alert("✅ Guardado correctamente.");
+}
+
+async function guardarGasto(form) {
+    const data={tienda_id:tiendaActual.id,descripcion:valorForm(form,["descripcion","gasto"]),categoria:valorForm(form,["categoria"],"General"),monto:num(valorForm(form,["monto","valor"])),fecha_gasto:valorForm(form,["fecha","fecha_gasto"],fechaHoy()),notas:valorForm(form,["notas","nota"])};
+    if(!data.descripcion || data.monto<=0)return alert("Escribe una descripción y un monto válido.");
+    const {error}=await supabaseClient.from("gastos").insert(data); if(error)return errorUI(error,"No se pudo guardar el gasto.");
+    form.reset(); await cargarTodo(); renderTodo();
+}
+
+async function guardarVenta(form) {
+    const psId=valorForm(form,["producto_servicio_id","productoId","producto-servicio"]);
+    const ps=productosServicios.find(p=>p.id===psId);
+    const nombre=valorForm(form,["producto","nombre_producto"],ps?.nombre||"");
+    const cantidad=Math.max(1,num(valorForm(form,["cantidad"],1)));
+    const precio=num(valorForm(form,["precio","precio_venta"],ps?.precio||0));
+    const costo=num(valorForm(form,["costo"],ps?.costo||0));
+    const data={tienda_id:tiendaActual.id,producto_servicio_id:psId||null,cantidad,tipo:ps?.tipo||valorForm(form,["tipo"],"producto"),cliente_id:valorForm(form,["cliente_id"])||null,cliente_nombre:valorForm(form,["cliente_nombre","cliente"]),whatsapp:valorForm(form,["whatsapp"]),producto:nombre,marca:valorForm(form,["marca"]),talla:valorForm(form,["talla"]),precio,costo,ganancia:(precio-costo)*cantidad,fecha_venta:valorForm(form,["fecha","fecha_venta"],new Date().toISOString()),metodo_pago:valorForm(form,["metodo_pago","metodo"],"efectivo"),notas:valorForm(form,["notas"]) };
+    if(!nombre || precio<=0)return alert("Selecciona un producto/servicio o escribe nombre y precio.");
+    const {error}=await supabaseClient.from("ventas").insert(data); if(error)return errorUI(error,"No se pudo registrar la venta.");
+    if(ps?.tipo==="producto") await supabaseClient.from("productos_servicios").update({stock:Math.max(0,num(ps.stock)-cantidad)}).eq("id",ps.id);
+    form.reset(); await cargarTodo(); renderTodo(); alert("✅ Venta registrada.");
+}
+
+async function guardarCliente(form) {
+    const data={tienda_id:tiendaActual.id,nombre:valorForm(form,["nombre"]),whatsapp:valorForm(form,["whatsapp"]),producto:valorForm(form,["producto"]),marca:valorForm(form,["marca"]),categoria:valorForm(form,["categoria"]),talla:valorForm(form,["talla"]),precio:num(valorForm(form,["precio"])),costo:num(valorForm(form,["costo"])),estado:"pendiente"};
+    if(!data.nombre)return alert("Escribe el nombre del cliente.");
+    const {error}=await supabaseClient.from("clientes").insert(data); if(error)return errorUI(error,"No se pudo guardar el cliente.");
+    form.reset(); await cargarTodo(); renderTodo();
+}
+
+async function guardarCuenta(form) {
+    const data={tienda_id:tiendaActual.id,cliente_id:valorForm(form,["cliente_id"])||null,cliente_nombre:valorForm(form,["cliente_nombre","cliente"]),descripcion:valorForm(form,["descripcion"]),monto_total:num(valorForm(form,["monto_total","monto"])),monto_pagado:0,fecha:valorForm(form,["fecha"],fechaHoy()),fecha_vencimiento:valorForm(form,["fecha_vencimiento"]),estado:"pending",notas:valorForm(form,["notas"])};
+    if(!data.cliente_nombre||data.monto_total<=0)return alert("Completa cliente y monto.");
+    const {error}=await supabaseClient.from("cuentas_por_cobrar").insert(data); if(error)return errorUI(error,"No se pudo crear la cuenta por cobrar.");
+    form.reset(); await cargarTodo(); renderTodo();
+}
+
+async function guardarNegocio(form) {
+    const nombre=valorForm(form,["nombre","nombre_tienda"],tiendaActual.nombre).trim();
+    const tipo=valorForm(form,["tipo_negocio","tipo"],tiendaActual.tipo_negocio||"productos");
+    const moneda=valorForm(form,["moneda"],tiendaActual.moneda||"COP");
+    const {error}=await supabaseClient.from("tiendas").update({nombre,tipo_negocio:tipo,moneda}).eq("id",tiendaActual.id);
+    if(error)return errorUI(error,"No se pudo actualizar el negocio.");
+    tiendaActual={...tiendaActual,nombre,tipo_negocio:tipo,moneda}; actualizarNombreNegocio(); renderTodo(); alert("✅ Datos actualizados.");
+}
+
+async function manejarClick(e) {
+    const nav=e.target.closest(".nav-btn"); if(nav){mostrarSeccion(nav.dataset.seccion||nav.dataset.target);return;}
+    const delP=e.target.closest(".boton-eliminar-producto"); if(delP){if(confirm("¿Eliminar este registro?")){const {error}=await supabaseClient.from("productos_servicios").delete().eq("id",delP.dataset.id);if(error)return errorUI(error);await cargarTodo();renderTodo();}return;}
+    const delG=e.target.closest(".boton-eliminar-gasto"); if(delG){if(confirm("¿Eliminar este gasto?")){const {error}=await supabaseClient.from("gastos").delete().eq("id",delG.dataset.id);if(error)return errorUI(error);await cargarTodo();renderTodo();}return;}
+    const logout=e.target.closest("#cerrar-sesion, #btn-cerrar-sesion, [data-accion='logout']"); if(logout){await supabaseClient.auth.signOut();location.reload();return;}
+    const periodo=e.target.closest("[data-periodo]"); if(periodo){periodoActual=periodo.dataset.periodo;document.querySelectorAll("[data-periodo]").forEach(x=>x.classList.remove("activo"));periodo.classList.add("activo");renderTodo();}
+    const exportar=e.target.closest("#exportar-clientes, [data-exportar='clientes']"); if(exportar) exportarClientes();
+}
+
+function exportarClientes() {
+    if(!clientes.length)return alert("No hay clientes para exportar.");
+    const filas=[["Nombre","WhatsApp","Producto","Estado","Precio","Costo"],...clientes.map(c=>[c.nombre,c.whatsapp,c.producto,c.estado,c.precio,c.costo])];
+    const csv=filas.map(f=>f.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");
+    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"})); a.download="clientes-mi-contabilidad.csv"; a.click(); URL.revokeObjectURL(a.href);
+}
+
+async function iniciar() {
+    try {
+        await cargarSupabase();
+        supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+        crearLogin();
+        supabaseClient.auth.onAuthStateChange((event,session)=>{ if(event==="SIGNED_OUT") mostrarAplicacion(false); });
+        await cargarSistema();
+    } catch(e) { errorUI(e,"No se pudo iniciar MI CONTABILIDAD."); }
+}
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",iniciar); else iniciar();
