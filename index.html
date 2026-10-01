@@ -3,905 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>DONAY STORE | Gestión de Clientes</title>
-
-    <link rel="stylesheet" href="style.css?v=3">
+    <meta name="theme-color" content="#111111">
+    <title>MI CONTABILIDAD</title>
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
+<body class="sistema-cargando">
 
-<body>
+<div id="pantalla-carga" class="pantalla-carga">
+    <div class="carga-caja">
+        <div class="carga-icono">📊</div>
+        <h1>MI CONTABILIDAD</h1>
+        <p>Cargando tu negocio...</p>
+        <div class="carga-linea"><span></span></div>
+    </div>
+</div>
 
-<div class="app">
-
-    <!-- =========================
-         ENCABEZADO
-    ========================== -->
+<div class="app" id="app-principal">
 
     <header class="header">
-
         <div class="logo-area">
-
-            <div class="logo-icon">
-                👕
-            </div>
-
+            <div class="logo-icon">📊</div>
             <div>
-                <h1>DONAY STORE</h1>
-                <p>Gestión de tu tienda de ropa</p>
+                <h1>MI CONTABILIDAD</h1>
+                <p>Gestión financiera de tu negocio</p>
+                <div class="nombre-negocio" data-nombre-tienda>🏪 Mi negocio</div>
             </div>
-
         </div>
 
-        <div class="header-badge">
-            🛍️ Mi tienda
+        <div class="header-acciones">
+            <span class="estado-cuenta">● En línea</span>
         </div>
-
     </header>
 
-
-    <!-- =========================
-         NAVEGACIÓN
-    ========================== -->
-
-    <nav class="navegacion">
-
-        <button
-            class="nav-btn activo"
-            onclick="mostrarSeccion('inicio', this)">
-            🏠 Inicio
-        </button>
-
-        <button
-            class="nav-btn"
-            onclick="mostrarSeccion('clientes', this)">
-            👥 Clientes
-        </button>
-
-        <button
-            class="nav-btn"
-            onclick="mostrarSeccion('ventas', this)">
-            💰 Ventas
-        </button>
-
-        <button
-            class="nav-btn"
-            onclick="mostrarSeccion('inventario', this)">
-            📦 Inventario
-        </button>
-
+    <nav class="navegacion" aria-label="Navegación principal">
+        <button class="nav-btn activo" onclick="mostrarSeccion('inicio', this)">🏠 Inicio</button>
+        <button class="nav-btn" onclick="mostrarSeccion('ventas', this)">🛒 Ventas</button>
+        <button class="nav-btn" onclick="mostrarSeccion('productos', this)">📦 Productos y servicios</button>
+        <button class="nav-btn" onclick="mostrarSeccion('gastos', this)">💸 Gastos</button>
+        <button class="nav-btn" onclick="mostrarSeccion('clientes', this)">👥 Clientes</button>
+        <button class="nav-btn" onclick="mostrarSeccion('finanzas', this)">💰 Finanzas</button>
+        <button class="nav-btn" onclick="mostrarSeccion('reportes', this)">📊 Reportes</button>
+        <button class="nav-btn" onclick="mostrarSeccion('negocio', this)">⚙️ Mi negocio</button>
     </nav>
 
+    <main>
 
-    <!-- =========================
-         INICIO
-    ========================== -->
-
-    <main id="seccion-inicio" class="seccion activa">
-
-        <div class="hero">
-
-            <div>
-
-                <span class="hero-etiqueta">
-                    TU TIENDA EN UN SOLO LUGAR
-                </span>
-
-                <h2>
-                    Administra tus clientes,
-                    ventas e inventario.
-                </h2>
-
-                <p>
-                    Lleva el control de tus productos,
-                    clientes y ganancias de manera sencilla.
-                </p>
-
-                <button
-                    class="btn-principal"
-                    onclick="mostrarSeccionPorNombre('clientes')">
-
-                    ➕ Registrar cliente
-
-                </button>
-
-            </div>
-
-            <div class="hero-icon">
-                👟
-            </div>
-
-        </div>
-
-
-        <!-- ESTADÍSTICAS -->
-
-        <div class="estadisticas">
-
-            <div class="stat-card">
-
-                <div class="stat-icon">
-                    👥
-                </div>
-
+        <section id="seccion-inicio" class="seccion activa">
+            <div class="hero">
                 <div>
-                    <span>Clientes</span>
-                    <strong id="inicio-clientes">0</strong>
+                    <span class="etiqueta">CONTROL TOTAL</span>
+                    <h2>Tu negocio. Tus números. En un solo lugar.</h2>
+                    <p>Registra ventas, productos, servicios y gastos. MI CONTABILIDAD calcula automáticamente tus costos, ganancias y resultados.</p>
+                    <div class="hero-botones">
+                        <button class="boton-principal" onclick="mostrarSeccion('ventas', document.querySelector('.nav-btn:nth-child(2)'))">➕ Registrar venta</button>
+                        <button class="boton-secundario-app" onclick="mostrarSeccion('productos', document.querySelector('.nav-btn:nth-child(3)'))">📦 Ver productos</button>
+                    </div>
                 </div>
-
+                <div class="hero-icono">💼</div>
             </div>
 
-
-            <div class="stat-card">
-
-                <div class="stat-icon">
-                    💰
+            <div class="estadisticas">
+                <div class="stat-card">
+                    <span>💵 Ventas</span>
+                    <strong id="inicio-ventas">$0</strong>
+                    <small>Ventas registradas</small>
                 </div>
-
-                <div>
-                    <span>Ventas</span>
-                    <strong id="inicio-ventas">0</strong>
-                </div>
-
-            </div>
-
-
-            <div class="stat-card">
-
-                <div class="stat-icon">
-                    📦
-                </div>
-
-                <div>
-                    <span>Productos</span>
-                    <strong id="inicio-productos">0</strong>
-                </div>
-
-            </div>
-
-
-            <div class="stat-card">
-
-                <div class="stat-icon">
-                    💵
-                </div>
-
-                <div>
-                    <span>Ganancia</span>
+                <div class="stat-card">
+                    <span>💰 Ganancia</span>
                     <strong id="inicio-ganancia">$0</strong>
+                    <small>Ganancia calculada</small>
+                </div>
+                <div class="stat-card">
+                    <span>💸 Gastos</span>
+                    <strong id="inicio-gastos">$0</strong>
+                    <small>Gastos registrados</small>
+                </div>
+                <div class="stat-card">
+                    <span>📦 Inventario</span>
+                    <strong id="inicio-productos">0</strong>
+                    <small>Productos y servicios</small>
+                </div>
+            </div>
+
+            <div class="bloque resumen-financiero">
+                <div class="titulo-seccion">
+                    <div>
+                        <span class="eyebrow">RESUMEN</span>
+                        <h2>Estado de tu negocio</h2>
+                    </div>
+                    <select id="periodo-inicio" onchange="actualizarInicio()">
+                        <option value="hoy">Hoy</option>
+                        <option value="semana">Esta semana</option>
+                        <option value="mes" selected>Este mes</option>
+                        <option value="todo">Todo</option>
+                    </select>
                 </div>
 
+                <div class="resumen-grid">
+                    <div><span>Ingresos</span><strong id="resumen-ingresos">$0</strong></div>
+                    <div><span>Costos</span><strong id="resumen-costos">$0</strong></div>
+                    <div><span>Gastos</span><strong id="resumen-gastos">$0</strong></div>
+                    <div><span>Utilidad neta</span><strong id="resumen-utilidad">$0</strong></div>
+                </div>
             </div>
 
-        </div>
-
-
-        <!-- MARCAS -->
-
-        <section class="bloque">
-
-            <div class="titulo-bloque">
-
-                <div>
-                    <span>ESTILO</span>
-                    <h3>Marcas populares</h3>
+            <div class="dos-columnas">
+                <div class="bloque">
+                    <div class="titulo-seccion"><div><span class="eyebrow">ACCESOS RÁPIDOS</span><h2>¿Qué quieres hacer?</h2></div></div>
+                    <div class="accesos-grid">
+                        <button onclick="mostrarSeccion('ventas', document.querySelector('.nav-btn:nth-child(2)'))">🛒<span>Registrar venta</span></button>
+                        <button onclick="mostrarSeccion('productos', document.querySelector('.nav-btn:nth-child(3)'))">📦<span>Agregar producto</span></button>
+                        <button onclick="mostrarSeccion('gastos', document.querySelector('.nav-btn:nth-child(4)'))">💸<span>Registrar gasto</span></button>
+                        <button onclick="mostrarSeccion('clientes', document.querySelector('.nav-btn:nth-child(5)'))">👥<span>Ver clientes</span></button>
+                    </div>
                 </div>
 
+                <div class="bloque">
+                    <div class="titulo-seccion"><div><span class="eyebrow">INDICADORES</span><h2>Lo que tienes pendiente</h2></div></div>
+                    <div class="indicadores-lista">
+                        <div><span>👥 Clientes</span><strong id="inicio-clientes">0</strong></div>
+                        <div><span>🧾 Por cobrar</span><strong id="inicio-por-cobrar">$0</strong></div>
+                        <div><span>📈 Margen</span><strong id="inicio-margen">0%</strong></div>
+                    </div>
+                </div>
             </div>
-
-
-            <div class="marcas">
-
-                <button onclick="seleccionarMarca('Nike')">
-                    NIKE
-                </button>
-
-                <button onclick="seleccionarMarca('Adidas')">
-                    adidas
-                </button>
-
-                <button onclick="seleccionarMarca('Puma')">
-                    PUMA
-                </button>
-
-                <button onclick="seleccionarMarca('Jordan')">
-                    JORDAN
-                </button>
-
-                <button onclick="seleccionarMarca('New Balance')">
-                    NEW BALANCE
-                </button>
-
-                <button onclick="seleccionarMarca('Levi’s')">
-                    Levi's
-                </button>
-
-            </div>
-
-            <p class="nota">
-                Las marcas son categorías para organizar tus productos.
-            </p>
-
         </section>
 
+        <section id="seccion-ventas" class="seccion">
+            <div class="titulo-pagina"><span class="eyebrow">MOVIMIENTOS</span><h2>Ventas</h2><p>Registra cada venta y conoce automáticamente el costo y la ganancia.</p></div>
 
-        <!-- CATEGORÍAS -->
-
-        <section class="bloque">
-
-            <div class="titulo-bloque">
-
-                <div>
-                    <span>COLECCIÓN</span>
-                    <h3>Categorías</h3>
-                </div>
-
+            <div class="ventas-resumen">
+                <div class="venta-resumen-card"><span>Ventas</span><strong id="total-ventas">0</strong></div>
+                <div class="venta-resumen-card"><span>Ingresos</span><strong id="dinero-ventas">$0</strong></div>
+                <div class="venta-resumen-card"><span>Ganancia</span><strong id="ganancia-ventas">$0</strong></div>
             </div>
 
-
-            <div class="categorias">
-
-                <button
-                    class="categoria-card"
-                    onclick="seleccionarCategoria('Camisetas')">
-
-                    <div>👕</div>
-                    <strong>Camisetas</strong>
-
-                </button>
-
-
-                <button
-                    class="categoria-card"
-                    onclick="seleccionarCategoria('Pantalones')">
-
-                    <div>👖</div>
-                    <strong>Pantalones</strong>
-
-                </button>
-
-
-                <button
-                    class="categoria-card"
-                    onclick="seleccionarCategoria('Vestidos')">
-
-                    <div>👗</div>
-                    <strong>Vestidos</strong>
-
-                </button>
-
-
-                <button
-                    class="categoria-card"
-                    onclick="seleccionarCategoria('Zapatos')">
-
-                    <div>👟</div>
-                    <strong>Zapatos</strong>
-
-                </button>
-
-
-                <button
-                    class="categoria-card"
-                    onclick="seleccionarCategoria('Accesorios')">
-
-                    <div>👜</div>
-                    <strong>Accesorios</strong>
-
-                </button>
-
+            <div class="bloque formulario-bloque">
+                <div class="titulo-seccion"><div><span class="eyebrow">NUEVA VENTA</span><h2>Registrar venta</h2></div></div>
+                <form id="formulario-venta" class="form-grid">
+                    <div class="campo"><label>Cliente</label><input id="venta-cliente" type="text" placeholder="Nombre del cliente"></div>
+                    <div class="campo"><label>WhatsApp</label><input id="venta-whatsapp" type="tel" placeholder="300..." inputmode="tel"></div>
+                    <div class="campo campo-grande"><label>Producto o servicio</label><select id="venta-producto"><option value="">Selecciona un producto o servicio</option></select></div>
+                    <div class="campo"><label>Cantidad</label><input id="venta-cantidad" type="number" min="1" step="1" value="1"></div>
+                    <div class="campo"><label>Método de pago</label><select id="venta-metodo-pago"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro</option></select></div>
+                    <div class="campo campo-grande"><label>Notas</label><input id="venta-notas" type="text" placeholder="Nota opcional"></div>
+                    <div class="venta-calculo campo-completo"><div><span>Total</span><strong id="venta-total-preview">$0</strong></div><div><span>Costo</span><strong id="venta-costo-preview">$0</strong></div><div><span>Ganancia</span><strong id="venta-ganancia-preview">$0</strong></div></div>
+                    <button class="boton-principal campo-completo" type="submit">🛒 Registrar venta</button>
+                </form>
             </div>
 
+            <div class="bloque">
+                <div class="lista-header"><div><span class="eyebrow">HISTORIAL</span><h2>Ventas registradas</h2></div><input id="buscador-ventas" type="search" placeholder="Buscar venta..."></div>
+                <div id="lista-ventas"></div>
+            </div>
+        </section>
+
+        <section id="seccion-productos" class="seccion">
+            <div class="titulo-pagina"><span class="eyebrow">CATÁLOGO</span><h2>Productos y servicios</h2><p>Registra el costo y precio una sola vez. Las ventas usarán estos valores automáticamente.</p></div>
+
+            <div class="bloque">
+                <form id="formulario-producto" class="form-grid">
+                    <div class="campo"><label>Tipo</label><select id="producto-tipo"><option value="producto">Producto</option><option value="servicio">Servicio</option></select></div>
+                    <div class="campo campo-grande"><label>Nombre</label><input id="producto-nombre" type="text" placeholder="Ej. Suéter, Corte de cabello..." required></div>
+                    <div class="campo"><label>Categoría</label><input id="producto-categoria" type="text" placeholder="Categoría"></div>
+                    <div class="campo"><label>Unidad</label><input id="producto-unidad" type="text" value="unidad"></div>
+                    <div class="campo"><label>Cantidad / stock</label><input id="producto-stock" type="number" min="0" step="0.01" value="0"></div>
+                    <div class="campo"><label>Costo unitario</label><input id="producto-costo" type="number" min="0" step="1" placeholder="0" required></div>
+                    <div class="campo"><label>Precio de venta</label><input id="producto-precio" type="number" min="0" step="1" placeholder="0" required></div>
+                    <div class="campo campo-grande"><label>Descripción</label><input id="producto-descripcion" type="text" placeholder="Descripción opcional"></div>
+                    <button class="boton-principal campo-completo" type="submit">➕ Guardar producto / servicio</button>
+                </form>
+            </div>
+
+            <div class="bloque">
+                <div class="lista-header"><div><span class="eyebrow">CATÁLOGO ACTIVO</span><h2>Mis productos y servicios</h2></div><input id="buscador-productos" type="search" placeholder="Buscar..."></div>
+                <div id="lista-productos"></div>
+            </div>
+
+            <div class="bloque inventario-legacy" id="bloque-inventario-legacy">
+                <div class="titulo-seccion"><div><span class="eyebrow">DATOS ANTERIORES</span><h2>Inventario existente</h2><p>Conservamos el inventario que ya tenías.</p></div></div>
+                <div id="lista-inventario"></div>
+            </div>
+        </section>
+
+        <section id="seccion-gastos" class="seccion">
+            <div class="titulo-pagina"><span class="eyebrow">EGRESOS</span><h2>Gastos</h2><p>Registra los gastos del negocio para calcular la utilidad neta.</p></div>
+            <div class="bloque">
+                <form id="formulario-gasto" class="form-grid">
+                    <div class="campo campo-grande"><label>Descripción</label><input id="gasto-descripcion" type="text" placeholder="Ej. Arriendo, transporte, publicidad..." required></div>
+                    <div class="campo"><label>Categoría</label><select id="gasto-categoria"><option>Operación</option><option>Arriendo</option><option>Servicios</option><option>Transporte</option><option>Publicidad</option><option>Personal</option><option>Compras</option><option>Otros</option></select></div>
+                    <div class="campo"><label>Monto</label><input id="gasto-monto" type="number" min="0" step="1" placeholder="0" required></div>
+                    <div class="campo"><label>Fecha</label><input id="gasto-fecha" type="date"></div>
+                    <div class="campo campo-grande"><label>Notas</label><input id="gasto-notas" type="text" placeholder="Nota opcional"></div>
+                    <button class="boton-principal campo-completo" type="submit">💸 Registrar gasto</button>
+                </form>
+            </div>
+            <div class="bloque"><div class="lista-header"><div><span class="eyebrow">HISTORIAL</span><h2>Gastos registrados</h2></div><strong id="total-gastos">$0</strong></div><div id="lista-gastos"></div></div>
+        </section>
+
+        <section id="seccion-clientes" class="seccion">
+            <div class="titulo-pagina"><span class="eyebrow">RELACIONES</span><h2>Clientes</h2><p>Conserva el historial de tus clientes y sus compras.</p></div>
+            <div class="bloque">
+                <form id="formulario-clientes" class="form-grid">
+                    <div class="campo"><label>Nombre</label><input id="nombre" type="text" required></div>
+                    <div class="campo"><label>WhatsApp</label><input id="whatsapp" type="tel" inputmode="tel"></div>
+                    <div class="campo campo-grande"><label>Producto / servicio</label><input id="producto" type="text" required></div>
+                    <div class="campo"><label>Marca</label><input id="marca" type="text"></div>
+                    <div class="campo"><label>Categoría</label><input id="categoria" type="text"></div>
+                    <div class="campo"><label>Talla / detalle</label><input id="talla" type="text"></div>
+                    <div class="campo"><label>Precio</label><input id="precio" type="number" min="0" step="1"></div>
+                    <div class="campo"><label>Costo</label><input id="costo" type="number" min="0" step="1"></div>
+                    <button class="boton-principal campo-completo" type="submit">➕ Registrar cliente</button>
+                </form>
+            </div>
+            <div class="bloque">
+                <div class="lista-header"><div><span class="eyebrow">BASE DE CLIENTES</span><h2>Mis clientes</h2><div id="contador-clientes" class="contador">0 clientes</div></div><div class="filtros"><input id="buscador" type="search" placeholder="Buscar cliente..."><select id="filtro-estado"><option value="todos">Todos</option><option value="Pendiente">Pendientes</option><option value="Vendido">Vendidos</option></select><button class="boton-secundario-app" onclick="exportarCSV()">📄 CSV</button></div></div>
+                <div id="lista-clientes"></div>
+            </div>
+        </section>
+
+        <section id="seccion-finanzas" class="seccion">
+            <div class="titulo-pagina"><span class="eyebrow">CONTROL FINANCIERO</span><h2>Finanzas</h2><p>Visualiza ingresos, costos, gastos y utilidad.</p></div>
+            <div class="estadisticas finanzas-stats">
+                <div class="stat-card"><span>Ingresos</span><strong id="finanzas-ingresos">$0</strong></div>
+                <div class="stat-card"><span>Costos</span><strong id="finanzas-costos">$0</strong></div>
+                <div class="stat-card"><span>Gastos</span><strong id="finanzas-gastos">$0</strong></div>
+                <div class="stat-card"><span>Utilidad neta</span><strong id="finanzas-utilidad">$0</strong></div>
+            </div>
+            <div class="bloque"><div class="titulo-seccion"><div><span class="eyebrow">INDICADORES</span><h2>Rentabilidad</h2></div></div><div class="resumen-grid"><div><span>Margen bruto</span><strong id="finanzas-margen-bruto">0%</strong></div><div><span>Margen neto</span><strong id="finanzas-margen-neto">0%</strong></div><div><span>Inventario invertido</span><strong id="finanzas-inventario">$0</strong></div><div><span>Ganancia potencial</span><strong id="finanzas-potencial">$0</strong></div></div></div>
+            <div class="bloque"><div class="titulo-seccion"><div><span class="eyebrow">CUENTAS</span><h2>Por cobrar</h2></div><strong id="finanzas-por-cobrar">$0</strong></div><div id="lista-cuentas-cobrar"></div></div>
+        </section>
+
+        <section id="seccion-reportes" class="seccion">
+            <div class="titulo-pagina"><span class="eyebrow">ANÁLISIS</span><h2>Reportes</h2><p>Consulta el comportamiento de tu negocio.</p></div>
+            <div class="bloque"><div class="titulo-seccion"><div><span class="eyebrow">PERIODO</span><h2>Resumen</h2></div><select id="periodo-reporte" onchange="actualizarReportes()"><option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes" selected>Este mes</option><option value="todo">Todo</option></select></div><div id="reporte-resumen" class="reporte-resumen"></div></div>
+            <div class="dos-columnas"><div class="bloque"><div class="titulo-seccion"><div><span class="eyebrow">VENTAS</span><h2>Actividad</h2></div></div><div id="reporte-ventas"></div></div><div class="bloque"><div class="titulo-seccion"><div><span class="eyebrow">GASTOS</span><h2>Actividad</h2></div></div><div id="reporte-gastos"></div></div></div>
+        </section>
+
+        <section id="seccion-negocio" class="seccion">
+            <div class="titulo-pagina"><span class="eyebrow">CONFIGURACIÓN</span><h2>Mi negocio</h2><p>Configura la información de tu empresa.</p></div>
+            <div class="bloque">
+                <div class="negocio-identidad"><div class="negocio-avatar">🏪</div><div><span>Aplicación</span><h2>MI CONTABILIDAD</h2><strong id="negocio-nombre">Mi negocio</strong></div></div>
+                <form id="formulario-negocio" class="form-grid">
+                    <div class="campo campo-grande"><label>Nombre del negocio</label><input id="negocio-nombre-input" type="text" placeholder="Nombre de tu negocio"></div>
+                    <div class="campo"><label>Tipo de negocio</label><select id="negocio-tipo"><option value="productos">Productos</option><option value="servicios">Servicios</option><option value="ambos">Productos + servicios</option></select></div>
+                    <div class="campo"><label>Moneda</label><select id="negocio-moneda"><option value="COP">COP - Peso colombiano</option></select></div>
+                    <button class="boton-principal campo-completo" type="submit">💾 Guardar configuración</button>
+                </form>
+            </div>
         </section>
 
     </main>
 
-
-    <!-- =========================
-         CLIENTES
-    ========================== -->
-
-    <section
-        id="seccion-clientes"
-        class="seccion">
-
-        <div class="titulo-seccion">
-
-            <div>
-
-                <span>GESTIÓN</span>
-
-                <h2>
-                    Clientes
-                </h2>
-
-                <p>
-                    Registra y administra tus clientes.
-                </p>
-
-            </div>
-
-        </div>
-
-
-        <!-- FORMULARIO -->
-
-        <form id="formulario-clientes">
-
-            <div class="form-titulo">
-
-                <div class="form-icon">
-                    👤
-                </div>
-
-                <div>
-                    <h3>Registrar nuevo cliente</h3>
-                    <p>Completa la información de la venta o interesado.</p>
-                </div>
-
-            </div>
-
-
-            <div class="form-grid">
-
-
-                <div class="campo">
-
-                    <label>
-                        Nombre del cliente
-                    </label>
-
-                    <input
-                        type="text"
-                        id="nombre"
-                        placeholder="Ej: Laura"
-                        required>
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        WhatsApp
-                    </label>
-
-                    <input
-                        type="tel"
-                        id="whatsapp"
-                        placeholder="Ej: 3001234567"
-                        required>
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        Producto
-                    </label>
-
-                    <input
-                        type="text"
-                        id="producto"
-                        placeholder="Ej: Vestido negro"
-                        required>
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        Marca
-                    </label>
-
-                    <select id="marca">
-
-                        <option value="Sin marca">
-                            Sin marca
-                        </option>
-
-                        <option value="Nike">
-                            Nike
-                        </option>
-
-                        <option value="Adidas">
-                            Adidas
-                        </option>
-
-                        <option value="Puma">
-                            Puma
-                        </option>
-
-                        <option value="Jordan">
-                            Jordan
-                        </option>
-
-                        <option value="New Balance">
-                            New Balance
-                        </option>
-
-                        <option value="Levi’s">
-                            Levi's
-                        </option>
-
-                        <option value="Otra">
-                            Otra
-                        </option>
-
-                    </select>
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        Categoría
-                    </label>
-
-                    <select id="categoria">
-
-                        <option value="Camisetas">
-                            Camisetas
-                        </option>
-
-                        <option value="Pantalones">
-                            Pantalones
-                        </option>
-
-                        <option value="Vestidos">
-                            Vestidos
-                        </option>
-
-                        <option value="Zapatos">
-                            Zapatos
-                        </option>
-
-                        <option value="Accesorios">
-                            Accesorios
-                        </option>
-
-                        <option value="Otro">
-                            Otro
-                        </option>
-
-                    </select>
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        Talla
-                    </label>
-
-                    <select id="talla">
-
-                        <option value="S">S</option>
-
-                        <option value="M">M</option>
-
-                        <option value="L">L</option>
-
-                        <option value="XL">XL</option>
-
-                    </select>
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        Precio de venta
-                    </label>
-
-                    <input
-                        type="number"
-                        id="precio"
-                        placeholder="Ej: 80000"
-                        min="0">
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        Costo del producto
-                    </label>
-
-                    <input
-                        type="number"
-                        id="costo"
-                        placeholder="Ej: 50000"
-                        min="0">
-
-                </div>
-
-            </div>
-
-
-            <button
-                type="submit"
-                class="btn-principal btn-registrar">
-
-                ➕ Registrar cliente
-
-            </button>
-
-        </form>
-
-
-        <!-- LISTA -->
-
-        <div class="lista-header">
-
-            <div>
-
-                <h3>
-                    Clientes registrados
-                </h3>
-
-                <p>
-                    Consulta y administra tus clientes.
-                </p>
-
-            </div>
-
-            <button
-                class="btn-secundario"
-                onclick="exportarCSV()">
-
-                📊 Exportar
-
-            </button>
-
-        </div>
-
-
-        <div
-            id="contador-clientes"
-            class="contador">
-        </div>
-
-
-        <div class="filtros">
-
-            <input
-                type="text"
-                id="buscador"
-                class="buscador"
-                placeholder="🔎 Buscar cliente, WhatsApp, producto o marca">
-
-
-            <select
-                id="filtro-estado"
-                class="filtro-select">
-
-                <option value="Todos">
-                    Todos los estados
-                </option>
-
-                <option value="Pendiente">
-                    Pendientes
-                </option>
-
-                <option value="Vendido">
-                    Vendidos
-                </option>
-
-            </select>
-
-        </div>
-
-
-        <div id="lista-clientes"></div>
-
-    </section>
-
-
-    <!-- =========================
-         VENTAS
-    ========================== -->
-
-    <section
-        id="seccion-ventas"
-        class="seccion">
-
-        <div class="titulo-seccion">
-
-            <span>NEGOCIO</span>
-
-            <h2>
-                Ventas
-            </h2>
-
-            <p>
-                Consulta las ventas realizadas y tus ganancias.
-            </p>
-
-        </div>
-
-
-        <div class="ventas-resumen">
-
-            <div class="venta-resumen-card">
-
-                <span>
-                    Ventas realizadas
-                </span>
-
-                <strong id="total-ventas">
-                    0
-                </strong>
-
-            </div>
-
-
-            <div class="venta-resumen-card">
-
-                <span>
-                    Dinero vendido
-                </span>
-
-                <strong id="dinero-ventas">
-                    $0
-                </strong>
-
-            </div>
-
-
-            <div class="venta-resumen-card">
-
-                <span>
-                    Ganancia
-                </span>
-
-                <strong id="ganancia-ventas">
-                    $0
-                </strong>
-
-            </div>
-
-        </div>
-
-
-        <div id="lista-ventas"></div>
-
-    </section>
-
-
-    <!-- =========================
-         INVENTARIO
-    ========================== -->
-
-    <section
-        id="seccion-inventario"
-        class="seccion">
-
-        <div class="titulo-seccion">
-
-            <span>PRODUCTOS</span>
-
-            <h2>
-                Inventario
-            </h2>
-
-            <p>
-                Controla las prendas y productos disponibles.
-            </p>
-
-        </div>
-
-
-        <div class="inventario-form">
-
-            <h3>
-                ➕ Agregar producto
-            </h3>
-
-
-            <div class="form-grid">
-
-                <div class="campo">
-
-                    <label>
-                        Producto
-                    </label>
-
-                    <input
-                        type="text"
-                        id="inventario-producto"
-                        placeholder="Ej: Camiseta básica">
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        Marca
-                    </label>
-
-                    <select id="inventario-marca">
-
-                        <option>
-                            Sin marca
-                        </option>
-
-                        <option>
-                            Nike
-                        </option>
-
-                        <option>
-                            Adidas
-                        </option>
-
-                        <option>
-                            Puma
-                        </option>
-
-                        <option>
-                            Jordan
-                        </option>
-
-                        <option>
-                            New Balance
-                        </option>
-
-                        <option>
-                            Levi’s
-                        </option>
-
-                    </select>
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        Talla
-                    </label>
-
-                    <select id="inventario-talla">
-
-                        <option>S</option>
-
-                        <option>M</option>
-
-                        <option>L</option>
-
-                        <option>XL</option>
-
-                    </select>
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        Cantidad
-                    </label>
-
-                    <input
-                        type="number"
-                        id="inventario-cantidad"
-                        min="1"
-                        value="1">
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        Precio
-                    </label>
-
-                    <input
-                        type="number"
-                        id="inventario-precio"
-                        min="0"
-                        placeholder="Ej: 80000">
-
-                </div>
-
-
-                <div class="campo">
-
-                    <label>
-                        Costo
-                    </label>
-
-                    <input
-                        type="number"
-                        id="inventario-costo"
-                        min="0"
-                        placeholder="Ej: 50000">
-
-                </div>
-
-            </div>
-
-
-            <button
-                type="button"
-                class="btn-principal"
-                onclick="agregarProductoInventario()">
-
-                📦 Agregar al inventario
-
-            </button>
-
-        </div>
-
-
-        <div
-            id="lista-inventario"
-            class="inventario-lista">
-        </div>
-
-    </section>
-
-
-    <!-- =========================
-         MODAL RECIBO
-    ========================== -->
-
-    <div
-        id="modal-recibo"
-        class="modal">
-
-        <div class="modal-contenido">
-
-            <button
-                class="cerrar-modal"
-                onclick="cerrarRecibo()">
-
-                ✕
-
-            </button>
-
-            <div id="contenido-recibo"></div>
-
-            <button
-                class="btn-principal"
-                onclick="imprimirRecibo()">
-
-                🖨️ Imprimir recibo
-
-            </button>
-
-        </div>
-
-    </div>
-
-
-    <!-- =========================
-         PIE
-    ========================== -->
-
-    <footer>
-
-        <p>
-            DONAY STORE © 2026
-        </p>
-
-        <span>
-            Sistema de gestión de tienda
-        </span>
-
+    <footer class="footer">
+        <strong>MI CONTABILIDAD</strong>
+        <span>Herramienta de gestión para pequeños negocios · 2026</span>
     </footer>
-
 </div>
 
+<div id="modal-recibo" class="modal oculto">
+    <div class="modal-contenido">
+        <button class="cerrar-modal" onclick="cerrarRecibo()">×</button>
+        <div id="contenido-recibo"></div>
+        <button class="boton-principal" onclick="imprimirRecibo()">🖨️ Imprimir</button>
+    </div>
+</div>
 
-<script src="script.js?v=3"></script>
-
+<script src="script.js?v=4"></script>
 </body>
 </html>
