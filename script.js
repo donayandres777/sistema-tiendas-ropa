@@ -48,6 +48,7 @@ function ponerTexto(ids, texto) {
 }
 
 function mostrarAplicacion(visible) {
+    document.body.classList.toggle("sistema-cargando", !visible);
     const app = $("app");
     if (app) app.style.display = visible ? "" : "none";
     const login = $("login-supabase");
@@ -143,6 +144,7 @@ async function cargarSistema() {
         await cargarTodo();
         actualizarNombreNegocio();
         mostrarAplicacion(true);
+        document.body.classList.remove("sistema-cargando");
         configurarEventos();
         mostrarSeccion("inicio");
         renderTodo();
@@ -365,7 +367,7 @@ async function manejarClick(e) {
     const nav=e.target.closest(".nav-btn"); if(nav){mostrarSeccion(nav.dataset.seccion||nav.dataset.target);return;}
     const delP=e.target.closest(".boton-eliminar-producto"); if(delP){if(confirm("¿Eliminar este registro?")){const {error}=await supabaseClient.from("productos_servicios").delete().eq("id",delP.dataset.id);if(error)return errorUI(error);await cargarTodo();renderTodo();}return;}
     const delG=e.target.closest(".boton-eliminar-gasto"); if(delG){if(confirm("¿Eliminar este gasto?")){const {error}=await supabaseClient.from("gastos").delete().eq("id",delG.dataset.id);if(error)return errorUI(error);await cargarTodo();renderTodo();}return;}
-    const logout=e.target.closest("#cerrar-sesion, #btn-cerrar-sesion, [data-accion='logout']"); if(logout){await supabaseClient.auth.signOut();location.reload();return;}
+    const logout=e.target.closest("#cerrar-sesion, #btn-cerrar-sesion, [data-accion='logout']"); if(logout){await supabaseClient.auth.signOut();mostrarAplicacion(false);location.reload();return;}
     const periodo=e.target.closest("[data-periodo]"); if(periodo){periodoActual=periodo.dataset.periodo;document.querySelectorAll("[data-periodo]").forEach(x=>x.classList.remove("activo"));periodo.classList.add("activo");renderTodo();}
     const exportar=e.target.closest("#exportar-clientes, [data-exportar='clientes']"); if(exportar) exportarClientes();
 }
